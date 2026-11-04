@@ -1,0 +1,19 @@
+name: test-pipeline
+run-name: ${{ github.actor }} triggered test pipelines
+on: [push]
+jobs:
+    run-unit-tests:
+        runs-on: ubuntu-latest
+
+        steps:
+          - name: Check out code
+            uses: actions/checkout@v7
+
+          - name: Set up Java
+            uses: actions/setup-java@v6
+            with:
+              distribution: temurin
+              java-version: '21'
+
+          - name: Run unit tests
+            run: ./mvnw --batch-mode --no-transfer-progress test
