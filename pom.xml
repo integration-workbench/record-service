@@ -44,7 +44,7 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.springframework.boot</groupId>2026-11-04T08:20:33.780-08:00  INFO 147025 --- [record-service] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8081 (http) with context path '/'
+                <groupId>org.springframework.boot</groupId>
 
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
