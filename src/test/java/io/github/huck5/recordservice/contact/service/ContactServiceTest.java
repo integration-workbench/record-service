@@ -59,7 +59,7 @@ class ContactServiceTest {
     @Test
     void updateContact_whenContactExists_updatesFieldsAndReturnsSavedContact() {
         long id = 42L;
-        Contact existing = new Contact("Bob", "Dole", "old@example.com");
+        Contact existing = new Contact("Bob", "Dole", "old@example.com", EXISTING_CONTACT_VERSION);
         CreateContactRequest request =
                 new CreateContactRequest("Robert", "Smith", "new@example.com");
 
