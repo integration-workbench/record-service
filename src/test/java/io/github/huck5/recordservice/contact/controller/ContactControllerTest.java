@@ -23,6 +23,11 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.dao.OptimisticLockingFailureException;
+
+import static org.mockito.Mockito.doThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 @WebMvcTest(ContactController.class)
 class ContactControllerTest {
@@ -142,6 +147,17 @@ class ContactControllerTest {
 
         mvc.perform(putContact().queryParam("expectedVersion", "2"))
            .andExpect(status().isConflict());
+    }
+
+    @Test
+    void deleteContact_whenOptimisticLockingFails_returnsConflict() throws Exception {
+        doThrow(new OptimisticLockingFailureException("Contact changed during delete"))
+                .when(contactService).deleteContact(42L, 2L);
+
+        mvc.perform(delete("/contacts/{id}", 42)
+                   .queryParam("expectedVersion", "2"))
+           .andExpect(status().isConflict())
+           .andExpect(content().string(""));
     }
 
     private MockHttpServletRequestBuilder putContact() {
