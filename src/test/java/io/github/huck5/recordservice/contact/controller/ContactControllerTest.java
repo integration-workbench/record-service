@@ -2,6 +2,8 @@ package io.github.huck5.recordservice.contact.controller;
 
 import io.github.huck5.recordservice.contact.dto.CreateContactRequest;
 import io.github.huck5.recordservice.contact.entity.Contact;
+import io.github.huck5.recordservice.contact.exception.ContactNotFoundException;
+import io.github.huck5.recordservice.contact.exception.ContactVersionConflictException;
 import io.github.huck5.recordservice.contact.service.ContactService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -10,16 +12,15 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -78,5 +79,80 @@ class ContactControllerTest {
         assertEquals("Bob", request.getFirstName());
         assertEquals("Dole", request.getLastName());
         assertEquals("bob@example.com", request.getEmail());
+    }
+
+    @Test
+    void updateContact_bindsRequestAndReturnsUpdatedContact() throws Exception {
+        Contact updated = mock(Contact.class);
+        when(updated.getId()).thenReturn(42L);
+        when(updated.getFirstName()).thenReturn("Robert");
+        when(updated.getLastName()).thenReturn("Smith");
+        when(updated.getEmail()).thenReturn("new@example.com");
+        when(updated.getVersion()).thenReturn(3L);
+        when(contactService.updateContact(eq(42L), any(CreateContactRequest.class), eq(2L)))
+                .thenReturn(updated);
+
+        mvc.perform(putContact().queryParam("expectedVersion", "2"))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.id").value(42))
+           .andExpect(jsonPath("$.firstName").value("Robert"))
+           .andExpect(jsonPath("$.lastName").value("Smith"))
+           .andExpect(jsonPath("$.email").value("new@example.com"))
+           .andExpect(jsonPath("$.version").value(3));
+
+        ArgumentCaptor<CreateContactRequest> captor =
+                ArgumentCaptor.forClass(CreateContactRequest.class);
+        verify(contactService).updateContact(eq(42L), captor.capture(), eq(2L));
+
+        CreateContactRequest request = captor.getValue();
+        assertEquals("Robert", request.getFirstName());
+        assertEquals("Smith", request.getLastName());
+        assertEquals("new@example.com", request.getEmail());
+    }
+
+    @Test
+    void updateContact_whenExpectedVersionIsMissing_returnsBadRequest() throws Exception {
+        mvc.perform(putContact())
+           .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(contactService);
+    }
+
+    @Test
+    void updateContact_whenExpectedVersionIsNotNumeric_returnsBadRequest() throws Exception {
+        mvc.perform(putContact().queryParam("expectedVersion", "abc"))
+           .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(contactService);
+    }
+
+    @Test
+    void updateContact_whenContactIsMissing_returnsNotFound() throws Exception {
+        when(contactService.updateContact(eq(42L), any(CreateContactRequest.class), eq(2L)))
+                .thenThrow(new ContactNotFoundException("Contact 42 not found"));
+
+        mvc.perform(putContact().queryParam("expectedVersion", "2"))
+           .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void updateContact_whenVersionConflicts_returnsConflict() throws Exception {
+        when(contactService.updateContact(eq(42L), any(CreateContactRequest.class), eq(2L)))
+                .thenThrow(new ContactVersionConflictException("Contact 42 version mismatch"));
+
+        mvc.perform(putContact().queryParam("expectedVersion", "2"))
+           .andExpect(status().isConflict());
+    }
+
+    private MockHttpServletRequestBuilder putContact() {
+        return put("/contacts/{id}", 42)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "firstName": "Robert",
+                      "lastName": "Smith",
+                      "email": "new@example.com"
+                    }
+                    """);
     }
 }
