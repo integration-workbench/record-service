@@ -2,6 +2,7 @@ package io.github.huck5.recordservice.contact.service;
 
 import io.github.huck5.recordservice.contact.dto.CreateContactRequest;
 import io.github.huck5.recordservice.contact.entity.Contact;
+import io.github.huck5.recordservice.contact.exception.ContactVersionConflictException;
 import io.github.huck5.recordservice.contact.repository.ContactRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ContactServiceTest {
+    private static final Long EXISTING_CONTACT_VERSION = 1L;
 
     @Mock
     private ContactRepository repository;
@@ -57,7 +59,7 @@ class ContactServiceTest {
     @Test
     void updateContact_whenContactExists_updatesFieldsAndReturnsSavedContact() {
         long id = 42L;
-        Contact existing = new Contact("Bob", "Dole", "old@example.com");
+        Contact existing = new Contact("Bob", "Dole", "old@example.com", EXISTING_CONTACT_VERSION);
         CreateContactRequest request =
                 new CreateContactRequest("Robert", "Smith", "new@example.com");
 
@@ -65,7 +67,7 @@ class ContactServiceTest {
         when(repository.findById(id)).thenReturn(Optional.of(existing));
         when(repository.save(existing)).thenReturn(savedContact);
 
-        Contact result = service.updateContact(id, request);
+        Contact result = service.updateContact(id, request, EXISTING_CONTACT_VERSION);
 
         assertEquals("Robert", existing.getFirstName());
         assertEquals("Smith", existing.getLastName());
@@ -81,8 +83,27 @@ class ContactServiceTest {
         when(repository.findById(id)).thenReturn(Optional.empty());
 
         assertThrows(ContactNotFoundException.class,
-                () -> service.updateContact(id, request));
+                () -> service.updateContact(id, request, EXISTING_CONTACT_VERSION));
 
         verify(repository, never()).save(any(Contact.class));
+    }
+
+    @Test
+    void updateContact_whenExpectedVersionDoesNotMatch_throwsAndDoesNotSave() {
+        long id = 42L;
+        long incorrectContactVersion = EXISTING_CONTACT_VERSION + 1;
+        Contact existing = new Contact("Bob", "Dole", "old@example.com", EXISTING_CONTACT_VERSION);
+        CreateContactRequest request =
+                new CreateContactRequest("Robert", "Smith", "new@example.com");
+
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+
+        assertThrows(ContactVersionConflictException.class,
+                () -> service.updateContact(id, request, incorrectContactVersion));
+
+        assertEquals("Bob", existing.getFirstName());
+        assertEquals("Dole", existing.getLastName());
+        assertEquals("old@example.com", existing.getEmail());
+        verify(repository, never()).save(any());
     }
 }
