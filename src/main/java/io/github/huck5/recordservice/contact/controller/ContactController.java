@@ -31,10 +31,8 @@ public class ContactController {
     }
 
     @PutMapping("/{id}")
-    public ContactResponse updateContact(@RequestBody CreateContactRequest contactRequest,
-                                         @PathVariable Long id,
-                                         @RequestParam("expectedVersion") Long expectedVersion) {
-        Contact updated = contactService.updateContact(id, contactRequest, expectedVersion);
+    public ContactResponse updateContact(@RequestBody CreateContactRequest contactRequest, @PathVariable Long id) {
+        Contact updated = contactService.updateContact(id, contactRequest);
 
         return toResponse(updated);
     }
