@@ -25,7 +25,7 @@ public class ContactController {
 
     @PostMapping
     public ContactResponse createContact(@RequestBody CreateContactRequest contactRequest) {
-        Contact outbound = contactService.insertxContact(contactRequest);
+        Contact outbound = contactService.insertContact(contactRequest);
 
         return toResponse(outbound);
     }
