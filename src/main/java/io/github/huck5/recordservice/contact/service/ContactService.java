@@ -46,4 +46,18 @@ public class ContactService {
 
         return repository.save(contact);
     }
+
+    @Transactional
+    public void deleteContact(Long id, Long expectedVersion) {
+        Contact contact = repository.findById(id).orElseThrow(() ->
+                new ContactNotFoundException("Contact: " + id + " not found"));
+
+        if (!Objects.equals(expectedVersion, contact.getVersion())) {
+            throw new ContactVersionConflictException(
+                    "Cannot delete contact %d: expected version %d, found %d"
+                            .formatted(id, expectedVersion, contact.getVersion()));
+        }
+
+        repository.delete(contact);
+    }
 }
