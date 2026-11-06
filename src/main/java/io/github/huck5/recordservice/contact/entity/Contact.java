@@ -10,7 +10,7 @@ public class Contact {
     private Long id;
     @Column(name = "first_name", length = 50)
     private String firstName;
-    @Column(name = "last_name", length = 50)
+    @Column(name = "last_name", length = 80)
     private String lastName;
     private String email;
     @Version

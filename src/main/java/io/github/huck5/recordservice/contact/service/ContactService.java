@@ -2,19 +2,19 @@ package io.github.huck5.recordservice.contact.service;
 
 import io.github.huck5.recordservice.contact.dto.CreateContactRequest;
 import io.github.huck5.recordservice.contact.entity.Contact;
-import io.github.huck5.recordservice.contact.exception.ContactVersionConflictException;
 import io.github.huck5.recordservice.contact.exception.ContactNotFoundException;
+import io.github.huck5.recordservice.contact.exception.ContactNotValidException;
+import io.github.huck5.recordservice.contact.exception.ContactVersionConflictException;
 import io.github.huck5.recordservice.contact.repository.ContactRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Objects;
 
 @Service
 public class ContactService {
-    public static final String CONTACT = "Contact: ";
-    public static final String NOT_FOUND = " not found";
     private final ContactRepository repository;
 
     public ContactService(ContactRepository repository) {
@@ -23,7 +23,7 @@ public class ContactService {
 
     public Contact getContact(Long id) {
         return repository.findById(id).orElseThrow(
-                () -> new ContactNotFoundException(CONTACT + id + NOT_FOUND));
+                () -> new ContactNotFoundException("Contact: " + id + " not found"));
     }
 
     public List<Contact> getContacts() {
@@ -32,6 +32,10 @@ public class ContactService {
 
     @Transactional
     public Contact insertContact(CreateContactRequest contactRequest) {
+        if (isContactEmpty(contactRequest)) {
+            throw new ContactNotValidException("Provide a first name, last name, or email.");
+        }
+
         Contact contact = new Contact(contactRequest.getFirstName(), contactRequest.getLastName(),
                 contactRequest.getEmail());
         return repository.save(contact);
@@ -39,12 +43,16 @@ public class ContactService {
 
     @Transactional
     public Contact updateContact(Long id, CreateContactRequest contactRequest, Long expectedVersion) {
-        Contact contact = repository.findById(id).orElseThrow(() ->
-                new ContactNotFoundException(CONTACT + id + NOT_FOUND));
+        if (isContactEmpty(contactRequest)) {
+            throw new ContactNotValidException("Provide a first name, last name, or email.");
+        }
+
+        Contact contact = getContact(id);
 
         if (!Objects.equals(expectedVersion, contact.getVersion())) {
             throw new ContactVersionConflictException(
-                    "Attempted to update [%d] and retrieved [%d]".formatted(contact.getVersion(), expectedVersion));
+                    "Cannot update contact [%d]: expected version [%d], found [%d]"
+                            .formatted(id, expectedVersion, contact.getVersion()));
         }
 
         contact.setFirstName(contactRequest.getFirstName());
@@ -56,15 +64,19 @@ public class ContactService {
 
     @Transactional
     public void deleteContact(Long id, Long expectedVersion) {
-        Contact contact = repository.findById(id).orElseThrow(() ->
-                new ContactNotFoundException(CONTACT + id + NOT_FOUND));
+        Contact contact = getContact(id);
 
         if (!Objects.equals(expectedVersion, contact.getVersion())) {
             throw new ContactVersionConflictException(
-                    "Cannot delete contact %d: expected version %d, found %d"
+                    "Cannot delete contact [%d]: expected version [%d], found [%d]"
                             .formatted(id, expectedVersion, contact.getVersion()));
         }
 
         repository.delete(contact);
+    }
+
+    private boolean isContactEmpty(CreateContactRequest contactRequest) {
+        return !StringUtils.hasText(contactRequest.getFirstName()) && !StringUtils.hasText(
+                contactRequest.getLastName()) && !StringUtils.hasText(contactRequest.getEmail());
     }
 }

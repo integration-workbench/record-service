@@ -4,6 +4,7 @@ import io.github.huck5.recordservice.contact.dto.ContactResponse;
 import io.github.huck5.recordservice.contact.dto.CreateContactRequest;
 import io.github.huck5.recordservice.contact.entity.Contact;
 import io.github.huck5.recordservice.contact.service.ContactService;
+import jakarta.validation.Valid;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,12 +40,10 @@ public class ContactController {
     }
 
     @PutMapping("/{id}")
-    public ContactResponse updateContact(@RequestBody CreateContactRequest contactRequest,
+    public ContactResponse updateContact(@Valid @RequestBody CreateContactRequest contactRequest,
                                          @PathVariable Long id,
                                          @RequestParam("expectedVersion") Long expectedVersion) {
-        Contact updated = contactService.updateContact(id, contactRequest, expectedVersion);
-
-        return toResponse(updated);
+        return toResponse(contactService.updateContact(id, contactRequest, expectedVersion));
     }
 
     @DeleteMapping("/{id}")
@@ -52,6 +51,7 @@ public class ContactController {
     public void deleteContact(@PathVariable Long id, @RequestParam("expectedVersion") Long expectedVersion) {
         contactService.deleteContact(id, expectedVersion);
     }
+
     @ExceptionHandler(OptimisticLockingFailureException.class)
     public ResponseEntity<Void> handleOptimisticLockConflict() {
         return ResponseEntity.status(HttpStatus.CONFLICT).build();

@@ -3,9 +3,12 @@ package io.github.huck5.recordservice.contact.controller;
 import io.github.huck5.recordservice.contact.dto.CreateContactRequest;
 import io.github.huck5.recordservice.contact.entity.Contact;
 import io.github.huck5.recordservice.contact.exception.ContactNotFoundException;
+import io.github.huck5.recordservice.contact.exception.ContactNotValidException;
 import io.github.huck5.recordservice.contact.exception.ContactVersionConflictException;
 import io.github.huck5.recordservice.contact.service.ContactService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -15,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -186,6 +190,49 @@ class ContactControllerTest {
 
         mvc.perform(get("/contacts/{id}", 99))
            .andExpect(status().isNotFound());
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidContactBodies")
+    void createContact_whenFieldIsInvalid_returnsBadRequest(String body) throws Exception {
+        mvc.perform(post("/contacts")
+                   .contentType(MediaType.APPLICATION_JSON)
+                   .content(body))
+           .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(contactService);
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidContactBodies")
+    void updateContact_whenFieldIsInvalid_returnsBadRequest(String body) throws Exception {
+        mvc.perform(put("/contacts/{id}", 42)
+                   .queryParam("expectedVersion", "1")
+                   .contentType(MediaType.APPLICATION_JSON)
+                   .content(body))
+           .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(contactService);
+    }
+
+    @Test
+    void createContact_whenServiceRejectsBlankDetails_returnsBadRequest() throws Exception {
+        when(contactService.insertContact(any(CreateContactRequest.class)))
+                .thenThrow(new ContactNotValidException(
+                        "Provide a first name, last name, or email."));
+
+        mvc.perform(post("/contacts")
+                   .contentType(MediaType.APPLICATION_JSON)
+                   .content("{}"))
+           .andExpect(status().isBadRequest());
+    }
+
+    private static Stream<String> invalidContactBodies() {
+        return Stream.of(
+                "{\"firstName\":\"%s\"}".formatted("a".repeat(51)),
+                "{\"lastName\":\"%s\"}".formatted("a".repeat(81)),
+                "{\"email\":\"not-an-email\"}"
+        );
     }
 
     private MockHttpServletRequestBuilder putContact() {

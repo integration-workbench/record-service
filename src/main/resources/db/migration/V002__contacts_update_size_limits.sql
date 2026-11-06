@@ -1,0 +1,2 @@
+ALTER TABLE contacts
+    MODIFY COLUMN last_name VARCHAR(80) NULL;
