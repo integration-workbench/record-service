@@ -1,92 +1,78 @@
 # Record Service
 
-The second Java application in Integration Workbench. It will own local record storage and the API for managing those records, starting with Contacts.
+Record Service is the Spring Boot API for storing and managing local contacts in Integration Workbench. The separate CRM Integration Service handles Salesforce and HubSpot connections. Record Service runs independently on port 8081.
 
-The integration application owns Salesforce/HubSpot connections and CRM operations. Record Service owns local records. The initial KAN-29 milestone provides the independently runnable application; persistence and Contact endpoints follow in KAN-7 and KAN-30.
+## Local setup
 
-## Project location
+Install JDK 21 and start Docker Desktop, or run a Docker Engine with the Compose plugin. The project includes the Maven Wrapper.
 
-This is a separate Spring Boot project and Git repository named `record-service`, alongside the existing integration project.
-
-Run the commands below from the project root: the directory containing `pom.xml`, `mvnw` and `mvnw.cmd`.
-
-Application entry point: `io.github.huck5.recordservice.RecordServiceApplication`.
-
-## Requirements
-
-- JDK 21, selected in IntelliJ or available through `JAVA_HOME` / `PATH`.
-- Internet access for the first Maven dependency download.
-
-The Maven wrapper is included, so a separate Maven installation is not required.
-
-## Configuration
-
-Set the application's name and port in `src/main/resources/application.properties`:
-
-```properties
-spring.application.name=record-service
-server.port=8081
-```
-
-This gives Record Service the base address `http://localhost:8081`, while the integration application can continue using port 8080.
-
-## Build
-
-Linux/macOS:
+From the directory containing `pom.xml`, start MySQL and check its logs for `ready for connections` on port 3306.
 
 ```bash
-./mvnw clean package
+docker compose up -d mysql
+docker compose logs --tail 30 mysql
 ```
 
-Windows PowerShell:
+Compose publishes MySQL at `127.0.0.1:3306` and stores its data in the `mysql-data` volume. The credentials below are the local development defaults from [compose.yaml](compose.yaml).
 
-```powershell
-.\mvnw.cmd clean package
-```
-
-This compiles the application, runs its configured tests and creates the packaged output under `target/`.
-
-## Run
-
-Linux/macOS:
+**Linux/macOS**
 
 ```bash
+export DB_URL='jdbc:mysql://127.0.0.1:3306/record_service'
+export DB_USERNAME='record_app'
+export DB_PASSWORD='local-record-password'
 ./mvnw spring-boot:run
 ```
 
-Windows PowerShell:
+**Windows PowerShell**
 
 ```powershell
+$env:DB_URL = 'jdbc:mysql://127.0.0.1:3306/record_service'
+$env:DB_USERNAME = 'record_app'
+$env:DB_PASSWORD = 'local-record-password'
 .\mvnw.cmd spring-boot:run
 ```
 
-Alternatively, open the project in IntelliJ and run `RecordServiceApplication`.
+To run from IntelliJ, set the same three variables in the `RecordServiceApplication` run configuration. Flyway applies the database migrations on startup. The API is available at `http://localhost:8081`.
 
-Check the startup output to confirm that the web server is listening on port 8081. Stop a terminal-launched application with `Ctrl+C`; stop an IDE-launched application with IntelliJ's Stop button.
+Stop the app with Ctrl+C or IntelliJ's Stop button. Run `docker compose stop mysql` to stop the local database and keep its data for the next run.
 
-## Test
+## Contact API
 
-Linux/macOS:
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST | `/contacts` | Create a contact |
+| GET | `/contacts` | List contacts |
+| GET | `/contacts/{id}` | Read one contact |
+| PUT | `/contacts/{id}?expectedVersion={version}` | Replace a contact's editable fields |
+| DELETE | `/contacts/{id}?expectedVersion={version}` | Delete a contact |
+
+Run these examples in a Bash shell, such as Git Bash on Windows.
+
+### Create a contact
 
 ```bash
-./mvnw test
+curl -i -X POST 'http://localhost:8081/contacts' \
+  -H 'Content-Type: application/json' \
+  -d '{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com"}'
 ```
 
-Windows PowerShell:
+The response includes the new contact's `id` and `version`.
 
-```powershell
-.\mvnw.cmd test
+### Update that contact
+
+Replace `1` and `0` below with the `id` and `version` from the create response.
+
+```bash
+curl -i -X PUT 'http://localhost:8081/contacts/1?expectedVersion=0' \
+  -H 'Content-Type: application/json' \
+  -d '{"firstName":"Ada","lastName":"Lovelace","email":"ada.lovelace@example.com"}'
 ```
 
-The generated `RecordServiceApplicationTests` class checks that the Spring application context starts. The Maven test command also runs additional tests as they are added.
+The response includes the updated contact and its new version. If you repeat the same request with the old version, the API returns `409 Conflict`. Read the contact again to get its current version before making another edit or deleting it.
 
-## Run both applications locally
+## Tests and build
 
-Open the integration project and Record Service in separate IntelliJ windows, then start each application's main class.
+Run `./mvnw test` on Linux/macOS or `.\mvnw.cmd test` in PowerShell. The repository integration tests use Testcontainers to start their own MySQL instance. Docker must be running during those tests.
 
-| Application | Local port |
-| --- | --- |
-| Integration application | 8080 |
-| Record Service | 8081 |
-
-Each application runs as its own Java process and can be built, started and stopped independently. Docker/Compose orchestration is a later milestone.
+Use `./mvnw clean package` or `.\mvnw.cmd clean package` to run the tests and build the application under `target/`.
