@@ -160,6 +160,34 @@ class ContactControllerTest {
            .andExpect(content().string(""));
     }
 
+    @Test
+    void getContact_whenContactExists_returnsFieldsAndVersion() throws Exception {
+        Contact contact = mock(Contact.class);
+        when(contact.getId()).thenReturn(42L);
+        when(contact.getFirstName()).thenReturn("Bob");
+        when(contact.getLastName()).thenReturn("Dole");
+        when(contact.getEmail()).thenReturn("bob@example.com");
+        when(contact.getVersion()).thenReturn(3L);
+        when(contactService.getContact(42L)).thenReturn(contact);
+
+        mvc.perform(get("/contacts/{id}", 42))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.id").value(42))
+           .andExpect(jsonPath("$.firstName").value("Bob"))
+           .andExpect(jsonPath("$.lastName").value("Dole"))
+           .andExpect(jsonPath("$.email").value("bob@example.com"))
+           .andExpect(jsonPath("$.version").value(3));
+    }
+
+    @Test
+    void getContact_whenContactIsMissing_returnsNotFound() throws Exception {
+        when(contactService.getContact(99L))
+                .thenThrow(new ContactNotFoundException("Could not find Contact 99"));
+
+        mvc.perform(get("/contacts/{id}", 99))
+           .andExpect(status().isNotFound());
+    }
+
     private MockHttpServletRequestBuilder putContact() {
         return put("/contacts/{id}", 42)
                 .contentType(MediaType.APPLICATION_JSON)

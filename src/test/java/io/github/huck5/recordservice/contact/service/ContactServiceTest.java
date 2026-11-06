@@ -106,4 +106,12 @@ class ContactServiceTest {
         assertEquals("old@example.com", existing.getEmail());
         verify(repository, never()).save(any());
     }
+
+    @Test
+    void getContact_whenRepositoryFindsNothing_throwsContactNotFound() {
+        long id = 99L;
+        when(repository.findById(id)).thenReturn(Optional.empty());
+
+        assertThrows(ContactNotFoundException.class, () -> service.getContact(id));
+    }
 }

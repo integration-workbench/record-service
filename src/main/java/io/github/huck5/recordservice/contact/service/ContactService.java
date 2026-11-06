@@ -13,10 +13,17 @@ import java.util.Objects;
 
 @Service
 public class ContactService {
+    public static final String CONTACT = "Contact: ";
+    public static final String NOT_FOUND = " not found";
     private final ContactRepository repository;
 
     public ContactService(ContactRepository repository) {
         this.repository = repository;
+    }
+
+    public Contact getContact(Long id) {
+        return repository.findById(id).orElseThrow(
+                () -> new ContactNotFoundException(CONTACT + id + NOT_FOUND));
     }
 
     public List<Contact> getContacts() {
@@ -33,7 +40,7 @@ public class ContactService {
     @Transactional
     public Contact updateContact(Long id, CreateContactRequest contactRequest, Long expectedVersion) {
         Contact contact = repository.findById(id).orElseThrow(() ->
-                new ContactNotFoundException("Contact: " + id + " not found"));
+                new ContactNotFoundException(CONTACT + id + NOT_FOUND));
 
         if (!Objects.equals(expectedVersion, contact.getVersion())) {
             throw new ContactVersionConflictException(
@@ -50,7 +57,7 @@ public class ContactService {
     @Transactional
     public void deleteContact(Long id, Long expectedVersion) {
         Contact contact = repository.findById(id).orElseThrow(() ->
-                new ContactNotFoundException("Contact: " + id + " not found"));
+                new ContactNotFoundException(CONTACT + id + NOT_FOUND));
 
         if (!Objects.equals(expectedVersion, contact.getVersion())) {
             throw new ContactVersionConflictException(

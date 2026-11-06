@@ -20,6 +20,11 @@ public class ContactController {
         this.contactService = contactService;
     }
 
+    @GetMapping("/{id}")
+    public ContactResponse getContact(@PathVariable Long id) {
+        return toResponse(contactService.getContact(id));
+    }
+
     @GetMapping
     public List<ContactResponse> getContacts() {
         List<Contact> contacts = contactService.getContacts();
