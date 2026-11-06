@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class CreateContactRequest {
+    @Size(max = 50)
     private String firstName;
     @Size(max = 80)
     private String lastName;
