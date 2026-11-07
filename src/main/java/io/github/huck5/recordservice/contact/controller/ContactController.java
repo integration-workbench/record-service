@@ -3,8 +3,10 @@ package io.github.huck5.recordservice.contact.controller;
 import io.github.huck5.recordservice.contact.dto.ContactDto;
 import io.github.huck5.recordservice.contact.dto.ContactResponse;
 import io.github.huck5.recordservice.contact.dto.CreateContactRequest;
+import io.github.huck5.recordservice.contact.dto.ImportContactResponse;
 import io.github.huck5.recordservice.contact.entity.Contact;
 import io.github.huck5.recordservice.contact.service.ContactService;
+import io.github.huck5.recordservice.CrmSource;
 import jakarta.validation.Valid;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
@@ -23,6 +25,11 @@ public class ContactController {
 
     public ContactController(ContactService contactService) {
         this.contactService = contactService;
+    }
+
+    @PostMapping("/imports")
+    public List<ContactDto> importContact(@RequestParam CrmSource source) {
+        return contactService.importContacts(source);
     }
 
     @GetMapping("/{id}")
