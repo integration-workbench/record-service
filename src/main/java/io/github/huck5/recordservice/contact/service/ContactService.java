@@ -7,6 +7,8 @@ import io.github.huck5.recordservice.contact.exception.ContactNotValidException;
 import io.github.huck5.recordservice.contact.exception.ContactVersionConflictException;
 import io.github.huck5.recordservice.contact.repository.ContactRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -26,8 +28,8 @@ public class ContactService {
                 () -> new ContactNotFoundException("Contact: " + id + " not found"));
     }
 
-    public List<Contact> getContacts() {
-        return repository.findAll();
+    public Page<Contact> getContacts(Pageable pageable) {
+        return repository.findAll(pageable);
     }
 
     @Transactional

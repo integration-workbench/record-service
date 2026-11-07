@@ -1,11 +1,15 @@
 package io.github.huck5.recordservice.contact.controller;
 
+import io.github.huck5.recordservice.contact.dto.ContactDto;
 import io.github.huck5.recordservice.contact.dto.ContactResponse;
 import io.github.huck5.recordservice.contact.dto.CreateContactRequest;
 import io.github.huck5.recordservice.contact.entity.Contact;
 import io.github.huck5.recordservice.contact.service.ContactService;
 import jakarta.validation.Valid;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,28 +26,29 @@ public class ContactController {
     }
 
     @GetMapping("/{id}")
-    public ContactResponse getContact(@PathVariable Long id) {
-        return toResponse(contactService.getContact(id));
+    public ContactDto getContact(@PathVariable Long id) {
+        return toDto(contactService.getContact(id));
     }
 
     @GetMapping
-    public List<ContactResponse> getContacts() {
-        List<Contact> contacts = contactService.getContacts();
-        return contacts.stream().map(this::toResponse).toList();
+    public ContactResponse getContacts(@PageableDefault(page = 0, size = 25, sort = "id") Pageable pageable) {
+        Page<ContactDto> contacts = contactService.getContacts(pageable).map(this::toDto);
+
+        return ContactResponse.from(contacts);
     }
 
     @PostMapping
-    public ContactResponse createContact(@Valid @RequestBody CreateContactRequest contactRequest) {
+    public ContactDto createContact(@Valid @RequestBody CreateContactRequest contactRequest) {
         Contact outbound = contactService.insertContact(contactRequest);
 
-        return toResponse(outbound);
+        return toDto(outbound);
     }
 
     @PutMapping("/{id}")
-    public ContactResponse updateContact(@Valid @RequestBody CreateContactRequest contactRequest,
-                                         @PathVariable Long id,
-                                         @RequestParam("expectedVersion") Long expectedVersion) {
-        return toResponse(contactService.updateContact(id, contactRequest, expectedVersion));
+    public ContactDto updateContact(@Valid @RequestBody CreateContactRequest contactRequest,
+                                    @PathVariable Long id,
+                                    @RequestParam("expectedVersion") Long expectedVersion) {
+        return toDto(contactService.updateContact(id, contactRequest, expectedVersion));
     }
 
     @DeleteMapping("/{id}")
@@ -57,8 +62,8 @@ public class ContactController {
         return ResponseEntity.status(HttpStatus.CONFLICT).build();
     }
 
-    private ContactResponse toResponse(Contact contact) {
-        return ContactResponse.builder().id(contact.getId()).firstName(contact.getFirstName()).lastName(
+    private ContactDto toDto(Contact contact) {
+        return ContactDto.builder().id(contact.getId()).firstName(contact.getFirstName()).lastName(
                 contact.getLastName()).email(contact.getEmail()).version(contact.getVersion()).build();
     }
 }

@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Email;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import jakarta.validation.constraints.Size;
 
+@SuppressWarnings({"unused", "FieldCanBeLocal"})
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class CreateContactRequest {
     @Size(max = 50)
