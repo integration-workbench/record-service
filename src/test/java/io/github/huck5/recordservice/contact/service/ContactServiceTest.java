@@ -11,7 +11,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import io.github.huck5.recordservice.contact.exception.ContactNotFoundException;
+import tools.jackson.databind.json.JsonMapper;
 
+import java.net.http.HttpClient;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,13 +30,16 @@ class ContactServiceTest {
     private static final Long EXISTING_CONTACT_VERSION = 1L;
 
     @Mock
+    private HttpClient httpClient;
+    @Mock
     private ContactRepository repository;
 
     private ContactService service;
 
     @BeforeEach
     void setUp() {
-        service = new ContactService(repository);
+        JsonMapper jsonMapper = JsonMapper.builder().build();
+        service = new ContactService(repository, httpClient, jsonMapper);
     }
 
     @Test
