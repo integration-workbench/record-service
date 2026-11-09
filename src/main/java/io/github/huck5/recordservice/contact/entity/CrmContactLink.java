@@ -20,4 +20,17 @@ public class CrmContactLink {
     @Column(name = "external_id", nullable = false, length = 50)
     private String externalId;
 
+    protected CrmContactLink() {
+        // Required by JPA
+    }
+
+    public CrmContactLink(CrmConnection connection, Contact contact, String externalId) {
+        this.connection = connection;
+        this.contact = contact;
+        this.externalId = externalId;
+    }
+
+    public String getExternalId() {
+        return externalId;
+    }
 }

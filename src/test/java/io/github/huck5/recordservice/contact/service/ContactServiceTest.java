@@ -1,7 +1,8 @@
 package io.github.huck5.recordservice.contact.service;
 
-import io.github.huck5.recordservice.contact.dto.CreateContactRequest;
+import io.github.huck5.recordservice.contact.dto.ContactCreateRequest;
 import io.github.huck5.recordservice.contact.entity.Contact;
+import io.github.huck5.recordservice.contact.exception.ContactNotFoundException;
 import io.github.huck5.recordservice.contact.exception.ContactVersionConflictException;
 import io.github.huck5.recordservice.contact.repository.ContactRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,20 +11,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import io.github.huck5.recordservice.contact.exception.ContactNotFoundException;
-import tools.jackson.databind.json.JsonMapper;
 
 import java.net.http.HttpClient;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.never;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ContactServiceTest {
@@ -38,14 +32,13 @@ class ContactServiceTest {
 
     @BeforeEach
     void setUp() {
-        JsonMapper jsonMapper = JsonMapper.builder().build();
-        service = new ContactService(repository, httpClient, jsonMapper);
+        service = new ContactService(repository);
     }
 
     @Test
     void insertContact_mapsRequestAndReturnsSavedContact() {
-        CreateContactRequest request =
-                new CreateContactRequest("Bob", "Dole", "test@test.com");
+        ContactCreateRequest request =
+                new ContactCreateRequest("Bob", "Dole", "test@test.com");
         Contact savedContact = mock(Contact.class);
         when(repository.save(any(Contact.class))).thenReturn(savedContact);
 
@@ -65,8 +58,8 @@ class ContactServiceTest {
     void updateContact_whenContactExists_updatesFieldsAndReturnsSavedContact() {
         long id = 42L;
         Contact existing = new Contact("Bob", "Dole", "old@example.com", EXISTING_CONTACT_VERSION);
-        CreateContactRequest request =
-                new CreateContactRequest("Robert", "Smith", "new@example.com");
+        ContactCreateRequest request =
+                new ContactCreateRequest("Robert", "Smith", "new@example.com");
 
         Contact savedContact = mock(Contact.class);
         when(repository.findById(id)).thenReturn(Optional.of(existing));
@@ -83,8 +76,8 @@ class ContactServiceTest {
     @Test
     void updateContact_whenContactIsMissing_throwsAndDoesNotSave() {
         long id = 42L;
-        CreateContactRequest request =
-                new CreateContactRequest("Robert", "Smith", "new@example.com");
+        ContactCreateRequest request =
+                new ContactCreateRequest("Robert", "Smith", "new@example.com");
         when(repository.findById(id)).thenReturn(Optional.empty());
 
         assertThrows(ContactNotFoundException.class,
@@ -98,8 +91,8 @@ class ContactServiceTest {
         long id = 42L;
         long incorrectContactVersion = EXISTING_CONTACT_VERSION + 1;
         Contact existing = new Contact("Bob", "Dole", "old@example.com", EXISTING_CONTACT_VERSION);
-        CreateContactRequest request =
-                new CreateContactRequest("Robert", "Smith", "new@example.com");
+        ContactCreateRequest request =
+                new ContactCreateRequest("Robert", "Smith", "new@example.com");
 
         when(repository.findById(id)).thenReturn(Optional.of(existing));
 

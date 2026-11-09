@@ -1,6 +1,6 @@
 package io.github.huck5.recordservice.contact.controller;
 
-import io.github.huck5.recordservice.contact.dto.CreateContactRequest;
+import io.github.huck5.recordservice.contact.dto.ContactCreateRequest;
 import io.github.huck5.recordservice.contact.entity.Contact;
 import io.github.huck5.recordservice.contact.exception.ContactNotFoundException;
 import io.github.huck5.recordservice.contact.exception.ContactNotValidException;
@@ -67,7 +67,7 @@ class ContactControllerTest {
         when(savedContact.getLastName()).thenReturn("Dole");
         when(savedContact.getEmail()).thenReturn("bob@example.com");
         when(savedContact.getVersion()).thenReturn(0L);
-        when(contactService.insertContact(any(CreateContactRequest.class)))
+        when(contactService.insertContact(any(ContactCreateRequest.class)))
                 .thenReturn(savedContact);
 
         mvc.perform(post("/contacts")
@@ -86,11 +86,11 @@ class ContactControllerTest {
            .andExpect(jsonPath("$.email").value("bob@example.com"))
            .andExpect(jsonPath("$.version").value(0));
 
-        ArgumentCaptor<CreateContactRequest> captor =
-                ArgumentCaptor.forClass(CreateContactRequest.class);
+        ArgumentCaptor<ContactCreateRequest> captor =
+                ArgumentCaptor.forClass(ContactCreateRequest.class);
         verify(contactService).insertContact(captor.capture());
 
-        CreateContactRequest request = captor.getValue();
+        ContactCreateRequest request = captor.getValue();
         assertEquals("Bob", request.getFirstName());
         assertEquals("Dole", request.getLastName());
         assertEquals("bob@example.com", request.getEmail());
@@ -104,7 +104,7 @@ class ContactControllerTest {
         when(updated.getLastName()).thenReturn("Smith");
         when(updated.getEmail()).thenReturn("new@example.com");
         when(updated.getVersion()).thenReturn(3L);
-        when(contactService.updateContact(eq(42L), any(CreateContactRequest.class), eq(2L)))
+        when(contactService.updateContact(eq(42L), any(ContactCreateRequest.class), eq(2L)))
                 .thenReturn(updated);
 
         mvc.perform(putContact().queryParam("expectedVersion", "2"))
@@ -115,11 +115,11 @@ class ContactControllerTest {
            .andExpect(jsonPath("$.email").value("new@example.com"))
            .andExpect(jsonPath("$.version").value(3));
 
-        ArgumentCaptor<CreateContactRequest> captor =
-                ArgumentCaptor.forClass(CreateContactRequest.class);
+        ArgumentCaptor<ContactCreateRequest> captor =
+                ArgumentCaptor.forClass(ContactCreateRequest.class);
         verify(contactService).updateContact(eq(42L), captor.capture(), eq(2L));
 
-        CreateContactRequest request = captor.getValue();
+        ContactCreateRequest request = captor.getValue();
         assertEquals("Robert", request.getFirstName());
         assertEquals("Smith", request.getLastName());
         assertEquals("new@example.com", request.getEmail());
@@ -143,7 +143,7 @@ class ContactControllerTest {
 
     @Test
     void updateContact_whenContactIsMissing_returnsNotFound() throws Exception {
-        when(contactService.updateContact(eq(42L), any(CreateContactRequest.class), eq(2L)))
+        when(contactService.updateContact(eq(42L), any(ContactCreateRequest.class), eq(2L)))
                 .thenThrow(new ContactNotFoundException("Contact 42 not found"));
 
         mvc.perform(putContact().queryParam("expectedVersion", "2"))
@@ -152,7 +152,7 @@ class ContactControllerTest {
 
     @Test
     void updateContact_whenVersionConflicts_returnsConflict() throws Exception {
-        when(contactService.updateContact(eq(42L), any(CreateContactRequest.class), eq(2L)))
+        when(contactService.updateContact(eq(42L), any(ContactCreateRequest.class), eq(2L)))
                 .thenThrow(new ContactVersionConflictException("Contact 42 version mismatch"));
 
         mvc.perform(putContact().queryParam("expectedVersion", "2"))
@@ -223,7 +223,7 @@ class ContactControllerTest {
 
     @Test
     void createContact_whenServiceRejectsBlankDetails_returnsBadRequest() throws Exception {
-        when(contactService.insertContact(any(CreateContactRequest.class)))
+        when(contactService.insertContact(any(ContactCreateRequest.class)))
                 .thenThrow(new ContactNotValidException(
                         "Provide a first name, last name, or email."));
 
