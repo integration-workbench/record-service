@@ -5,6 +5,7 @@ import io.github.huck5.recordservice.contact.entity.Contact;
 import io.github.huck5.recordservice.contact.exception.ContactNotFoundException;
 import io.github.huck5.recordservice.contact.exception.ContactNotValidException;
 import io.github.huck5.recordservice.contact.exception.ContactVersionConflictException;
+import io.github.huck5.recordservice.contact.service.ContactImportService;
 import io.github.huck5.recordservice.contact.service.ContactService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -43,7 +44,8 @@ class ContactControllerTest {
 
     @Autowired
     private MockMvc mvc;
-
+    @MockitoBean
+    private ContactImportService contactImportService;
     @MockitoBean
     private ContactService contactService;
 
