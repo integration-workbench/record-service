@@ -23,6 +23,33 @@ public class ContactImportResponse {
         this.failed = builder.failed;
     }
 
+    public CrmSource getSource() {
+        return source;
+    }
+
+    public int getFetched() {
+        return fetched;
+    }
+
+    public int getImported() {
+        return imported;
+    }
+
+    public int getSkipped() {
+        return skipped;
+    }
+
+    public int getInvalidExternalId() {
+        return invalidExternalId;
+    }
+
+    public int getInvalidContact() {
+        return invalidContact;
+    }
+
+    public int getFailed() {
+        return failed;
+    }
 
     public static Builder builder() {
         return new Builder();
