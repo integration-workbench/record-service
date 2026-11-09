@@ -9,15 +9,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import jakarta.validation.Validator;
 
 import java.util.Objects;
 
 @Service
 public class ContactService {
     private final ContactRepository contactRepository;
+    private final Validator validator;
 
-    public ContactService(ContactRepository contactRepository) {
+    public ContactService(ContactRepository contactRepository, Validator validator) {
         this.contactRepository = contactRepository;
+        this.validator = validator;
     }
 
     public Contact getContact(Long id) {
@@ -31,9 +34,7 @@ public class ContactService {
 
     @Transactional
     public Contact insertContact(ContactCreateRequest contactRequest) {
-        if (isContactEmpty(contactRequest)) {
-            throw new ContactNotValidException("Provide a first name, last name, or email.");
-        }
+        validateContact(contactRequest);
 
         Contact contact = new Contact(contactRequest.getFirstName(), contactRequest.getLastName(),
                 contactRequest.getEmail());
@@ -42,9 +43,7 @@ public class ContactService {
 
     @Transactional
     public Contact updateContact(Long id, ContactCreateRequest contactRequest, Long expectedVersion) {
-        if (isContactEmpty(contactRequest)) {
-            throw new ContactNotValidException("Provide a first name, last name, or email.");
-        }
+        validateContact(contactRequest);
 
         Contact contact = getContact(id);
 
@@ -72,6 +71,18 @@ public class ContactService {
         }
 
         contactRepository.delete(contact);
+    }
+
+    private void validateContact(ContactCreateRequest request) {
+        if (isContactEmpty(request)) {
+            throw new ContactNotValidException(
+                    "Provide a first name, last name, or email.");
+        }
+
+        if (!validator.validate(request).isEmpty()) {
+            throw new ContactNotValidException(
+                    "Contact fields do not meet the validation requirements.");
+        }
     }
 
     private boolean isContactEmpty(ContactCreateRequest contactRequest) {
