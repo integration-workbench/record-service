@@ -1,53 +1,49 @@
 package io.github.huck5.recordservice.contact.service;
 
-import io.github.huck5.recordservice.contact.dto.CreateContactRequest;
+import io.github.huck5.recordservice.contact.dto.ContactCreateRequest;
 import io.github.huck5.recordservice.contact.entity.Contact;
-import io.github.huck5.recordservice.contact.exception.ContactNotFoundException;
-import io.github.huck5.recordservice.contact.exception.ContactNotValidException;
-import io.github.huck5.recordservice.contact.exception.ContactVersionConflictException;
+import io.github.huck5.recordservice.contact.exception.*;
 import io.github.huck5.recordservice.contact.repository.ContactRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import jakarta.validation.Validator;
 
-import java.util.List;
 import java.util.Objects;
 
 @Service
 public class ContactService {
-    private final ContactRepository repository;
+    private final ContactRepository contactRepository;
+    private final Validator validator;
 
-    public ContactService(ContactRepository repository) {
-        this.repository = repository;
+    public ContactService(ContactRepository contactRepository, Validator validator) {
+        this.contactRepository = contactRepository;
+        this.validator = validator;
     }
 
     public Contact getContact(Long id) {
-        return repository.findById(id).orElseThrow(
+        return contactRepository.findById(id).orElseThrow(
                 () -> new ContactNotFoundException("Contact: " + id + " not found"));
     }
 
     public Page<Contact> getContacts(Pageable pageable) {
-        return repository.findAll(pageable);
+        return contactRepository.findAll(pageable);
     }
 
     @Transactional
-    public Contact insertContact(CreateContactRequest contactRequest) {
-        if (isContactEmpty(contactRequest)) {
-            throw new ContactNotValidException("Provide a first name, last name, or email.");
-        }
+    public Contact insertContact(ContactCreateRequest contactRequest) {
+        validateContact(contactRequest);
 
         Contact contact = new Contact(contactRequest.getFirstName(), contactRequest.getLastName(),
                 contactRequest.getEmail());
-        return repository.save(contact);
+        return contactRepository.save(contact);
     }
 
     @Transactional
-    public Contact updateContact(Long id, CreateContactRequest contactRequest, Long expectedVersion) {
-        if (isContactEmpty(contactRequest)) {
-            throw new ContactNotValidException("Provide a first name, last name, or email.");
-        }
+    public Contact updateContact(Long id, ContactCreateRequest contactRequest, Long expectedVersion) {
+        validateContact(contactRequest);
 
         Contact contact = getContact(id);
 
@@ -61,7 +57,7 @@ public class ContactService {
         contact.setLastName(contactRequest.getLastName());
         contact.setEmail(contactRequest.getEmail());
 
-        return repository.save(contact);
+        return contactRepository.save(contact);
     }
 
     @Transactional
@@ -74,10 +70,22 @@ public class ContactService {
                             .formatted(id, expectedVersion, contact.getVersion()));
         }
 
-        repository.delete(contact);
+        contactRepository.delete(contact);
     }
 
-    private boolean isContactEmpty(CreateContactRequest contactRequest) {
+    private void validateContact(ContactCreateRequest request) {
+        if (isContactEmpty(request)) {
+            throw new ContactNotValidException(
+                    "Provide a first name, last name, or email.");
+        }
+
+        if (!validator.validate(request).isEmpty()) {
+            throw new ContactNotValidException(
+                    "Contact fields do not meet the validation requirements.");
+        }
+    }
+
+    private boolean isContactEmpty(ContactCreateRequest contactRequest) {
         return !StringUtils.hasText(contactRequest.getFirstName()) && !StringUtils.hasText(
                 contactRequest.getLastName()) && !StringUtils.hasText(contactRequest.getEmail());
     }

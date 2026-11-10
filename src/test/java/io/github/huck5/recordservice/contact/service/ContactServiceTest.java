@@ -1,27 +1,30 @@
 package io.github.huck5.recordservice.contact.service;
 
-import io.github.huck5.recordservice.contact.dto.CreateContactRequest;
+import io.github.huck5.recordservice.contact.dto.ContactCreateRequest;
 import io.github.huck5.recordservice.contact.entity.Contact;
+import io.github.huck5.recordservice.contact.exception.ContactNotFoundException;
+import io.github.huck5.recordservice.contact.exception.ContactNotValidException;
 import io.github.huck5.recordservice.contact.exception.ContactVersionConflictException;
 import io.github.huck5.recordservice.contact.repository.ContactRepository;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import io.github.huck5.recordservice.contact.exception.ContactNotFoundException;
 
+import java.net.http.HttpClient;
 import java.util.Optional;
+import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.never;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ContactServiceTest {
@@ -29,18 +32,24 @@ class ContactServiceTest {
 
     @Mock
     private ContactRepository repository;
-
+    private ValidatorFactory validatorFactory;
     private ContactService service;
 
     @BeforeEach
     void setUp() {
-        service = new ContactService(repository);
+        validatorFactory = Validation.buildDefaultValidatorFactory();
+        service = new ContactService(repository, validatorFactory.getValidator());
+    }
+
+    @AfterEach
+    void tearDown() {
+        validatorFactory.close();
     }
 
     @Test
     void insertContact_mapsRequestAndReturnsSavedContact() {
-        CreateContactRequest request =
-                new CreateContactRequest("Bob", "Dole", "test@test.com");
+        ContactCreateRequest request =
+                new ContactCreateRequest("Bob", "Dole", "test@test.com");
         Contact savedContact = mock(Contact.class);
         when(repository.save(any(Contact.class))).thenReturn(savedContact);
 
@@ -60,8 +69,8 @@ class ContactServiceTest {
     void updateContact_whenContactExists_updatesFieldsAndReturnsSavedContact() {
         long id = 42L;
         Contact existing = new Contact("Bob", "Dole", "old@example.com", EXISTING_CONTACT_VERSION);
-        CreateContactRequest request =
-                new CreateContactRequest("Robert", "Smith", "new@example.com");
+        ContactCreateRequest request =
+                new ContactCreateRequest("Robert", "Smith", "new@example.com");
 
         Contact savedContact = mock(Contact.class);
         when(repository.findById(id)).thenReturn(Optional.of(existing));
@@ -78,8 +87,8 @@ class ContactServiceTest {
     @Test
     void updateContact_whenContactIsMissing_throwsAndDoesNotSave() {
         long id = 42L;
-        CreateContactRequest request =
-                new CreateContactRequest("Robert", "Smith", "new@example.com");
+        ContactCreateRequest request =
+                new ContactCreateRequest("Robert", "Smith", "new@example.com");
         when(repository.findById(id)).thenReturn(Optional.empty());
 
         assertThrows(ContactNotFoundException.class,
@@ -93,8 +102,8 @@ class ContactServiceTest {
         long id = 42L;
         long incorrectContactVersion = EXISTING_CONTACT_VERSION + 1;
         Contact existing = new Contact("Bob", "Dole", "old@example.com", EXISTING_CONTACT_VERSION);
-        CreateContactRequest request =
-                new CreateContactRequest("Robert", "Smith", "new@example.com");
+        ContactCreateRequest request =
+                new ContactCreateRequest("Robert", "Smith", "new@example.com");
 
         when(repository.findById(id)).thenReturn(Optional.of(existing));
 
@@ -113,5 +122,59 @@ class ContactServiceTest {
         when(repository.findById(id)).thenReturn(Optional.empty());
 
         assertThrows(ContactNotFoundException.class, () -> service.getContact(id));
+    }
+
+    @ParameterizedTest
+    @MethodSource("requestsWithInvalidFields")
+    void insertContact_whenAnnotatedConstraintFails_throwsWithoutSaving(
+            ContactCreateRequest request) {
+
+        assertThrows(
+                ContactNotValidException.class,
+                () -> service.insertContact(request));
+
+        verifyNoInteractions(repository);
+    }
+
+    @ParameterizedTest
+    @MethodSource("requestsWithInvalidFields")
+    void updateContact_whenAnnotatedConstraintFails_throwsWithoutAccessingRepository(
+            ContactCreateRequest request) {
+
+        assertThrows(
+                ContactNotValidException.class,
+                () -> service.updateContact(42L, request, EXISTING_CONTACT_VERSION));
+
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void insertContact_whenNamesAreAtMaximumLength_savesContact() {
+        String firstName = "a".repeat(50);
+        String lastName = "b".repeat(80);
+
+        ContactCreateRequest request =
+                new ContactCreateRequest(firstName, lastName, "bob@example.com");
+
+        Contact savedContact =
+                new Contact(firstName, lastName, "bob@example.com");
+
+        when(repository.save(any(Contact.class))).thenReturn(savedContact);
+
+        Contact result = service.insertContact(request);
+
+        assertSame(savedContact, result);
+        verify(repository).save(any(Contact.class));
+    }
+
+    private static Stream<ContactCreateRequest> requestsWithInvalidFields() {
+        return Stream.of(
+                new ContactCreateRequest(
+                        "a".repeat(51), "Dole", "bob@example.com"),
+                new ContactCreateRequest(
+                        "Bob", "a".repeat(81), "bob@example.com"),
+                new ContactCreateRequest(
+                        "Bob", "Dole", "not-an-email")
+        );
     }
 }

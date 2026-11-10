@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 
 @SuppressWarnings({"unused", "FieldCanBeLocal"})
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-public class CreateContactRequest {
+public class ContactCreateRequest {
     @Size(max = 50)
     private String firstName;
     @Size(max = 80)
@@ -14,7 +14,7 @@ public class CreateContactRequest {
     @Email
     private String email;
 
-    public CreateContactRequest(String firstName, String lastName, String email) {
+    public ContactCreateRequest(String firstName, String lastName, String email) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.email =email;

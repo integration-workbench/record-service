@@ -1,6 +1,8 @@
 package io.github.huck5.recordservice.contact.dto;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @SuppressWarnings({"unused", "FieldCanBeLocal"})
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
@@ -10,6 +12,15 @@ public class ContactDto {
     private final String lastName;
     private final String email;
     private final Long version;
+
+    @JsonCreator
+    public ContactDto(Long id, String firstName, String lastName, String email, Long version) {
+        this.id = id;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.version = version;
+    }
 
     private ContactDto(Builder builder) {
         this.id = builder.id;

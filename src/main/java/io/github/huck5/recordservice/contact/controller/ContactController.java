@@ -1,10 +1,10 @@
 package io.github.huck5.recordservice.contact.controller;
 
-import io.github.huck5.recordservice.contact.dto.ContactDto;
-import io.github.huck5.recordservice.contact.dto.ContactResponse;
-import io.github.huck5.recordservice.contact.dto.CreateContactRequest;
+import io.github.huck5.recordservice.contact.dto.*;
 import io.github.huck5.recordservice.contact.entity.Contact;
+import io.github.huck5.recordservice.contact.service.ContactImportService;
 import io.github.huck5.recordservice.contact.service.ContactService;
+import io.github.huck5.recordservice.CrmSource;
 import jakarta.validation.Valid;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
@@ -20,9 +20,16 @@ import java.util.List;
 @RequestMapping("/contacts")
 public class ContactController {
     private final ContactService contactService;
+    private final ContactImportService contactImportService;
 
-    public ContactController(ContactService contactService) {
+    public ContactController(ContactService contactService, ContactImportService contactImportService) {
         this.contactService = contactService;
+        this.contactImportService = contactImportService;
+    }
+
+    @PostMapping("/imports")
+    public ContactImportResponse importContact(@RequestParam CrmSource source) {
+        return contactImportService.importContacts(source);
     }
 
     @GetMapping("/{id}")
@@ -38,14 +45,14 @@ public class ContactController {
     }
 
     @PostMapping
-    public ContactDto createContact(@Valid @RequestBody CreateContactRequest contactRequest) {
+    public ContactDto createContact(@Valid @RequestBody ContactCreateRequest contactRequest) {
         Contact outbound = contactService.insertContact(contactRequest);
 
         return toDto(outbound);
     }
 
     @PutMapping("/{id}")
-    public ContactDto updateContact(@Valid @RequestBody CreateContactRequest contactRequest,
+    public ContactDto updateContact(@Valid @RequestBody ContactCreateRequest contactRequest,
                                     @PathVariable Long id,
                                     @RequestParam("expectedVersion") Long expectedVersion) {
         return toDto(contactService.updateContact(id, contactRequest, expectedVersion));

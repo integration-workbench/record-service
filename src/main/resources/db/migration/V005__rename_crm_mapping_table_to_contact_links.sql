@@ -1,0 +1,1 @@
+RENAME TABLE crm_mapping_table TO crm_contact_links;;

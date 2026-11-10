@@ -1,0 +1,2 @@
+ALTER TABLE crm_connections
+    MODIFY COLUMN crm_source ENUM('HUBSPOT', 'SALESFORCE') NOT NULL;
