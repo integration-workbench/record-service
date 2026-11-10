@@ -3,6 +3,7 @@ package io.github.huck5.recordservice.contact.service;
 import io.github.huck5.recordservice.CrmSource;
 import io.github.huck5.recordservice.contact.dto.ContactCreateRequest;
 import io.github.huck5.recordservice.contact.dto.ContactImportResponse;
+import io.github.huck5.recordservice.contact.dto.ContactRetrievalResponse;
 import io.github.huck5.recordservice.contact.dto.CrmContactDto;
 import io.github.huck5.recordservice.contact.entity.Contact;
 import io.github.huck5.recordservice.contact.entity.CrmConnection;
@@ -79,8 +80,9 @@ public class ContactImportService {
         }
 
         // Successfully retrieved contacts for specified CRM
-        List<CrmContactDto> contacts = jsonMapper.readValue(response.body(), new TypeReference<>() {
+        ContactRetrievalResponse retrievalResponse = jsonMapper.readValue(response.body(), new TypeReference<>() {
         });
+        List<CrmContactDto> contacts = retrievalResponse.contacts();
 
         List<String> externalIds = contacts.stream().map(CrmContactDto::getExternalId).toList();
         List<CrmContactLink> contactLinks = crmContactLinkRepository.findByConnectionAndExternalIdIn(crmConnection,
