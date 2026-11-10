@@ -3,6 +3,7 @@ package io.github.huck5.recordservice.contact.service;
 import io.github.huck5.recordservice.CrmSource;
 import io.github.huck5.recordservice.contact.dto.ContactCreateRequest;
 import io.github.huck5.recordservice.contact.dto.ContactImportResponse;
+import io.github.huck5.recordservice.contact.dto.ContactRetrievalResponse;
 import io.github.huck5.recordservice.contact.dto.CrmContactDto;
 import io.github.huck5.recordservice.contact.entity.Contact;
 import io.github.huck5.recordservice.contact.entity.CrmConnection;
@@ -88,16 +89,21 @@ class ContactImportServiceTest {
             CrmSource source) throws Exception {
 
         givenSuccessfulResponse(source, """
-                [
-                  {
-                    "source": "%s",
-                    "externalId": "external-1",
-                    "firstName": "Bob",
-                    "lastName": "Dole",
-                    "email": "bob@example.com"
-                  }
-                ]
-                """.formatted(source.name()));
+        {
+          "contacts": [
+            {
+              "source": "%s",
+              "externalId": "external-1",
+              "firstName": "Bob",
+              "lastName": "Dole",
+              "email": "bob@example.com"
+            }
+          ],
+          "totalAvailable": 1,
+          "hasMore": false,
+          "continuationToken": null
+        }
+        """.formatted(source.name()));
 
         when(linkRepository.findByConnectionAndExternalIdIn(
                 same(connection), anyList()))
@@ -586,9 +592,15 @@ class ContactImportServiceTest {
             List<CrmContactLink> existingLinks,
             CrmContactDto... contacts) throws Exception {
 
+        ContactRetrievalResponse response = new ContactRetrievalResponse(
+                Arrays.asList(contacts),
+                (long) contacts.length,
+                false,
+                null);
+
         givenSuccessfulResponse(
                 CrmSource.SALESFORCE,
-                jsonMapper.writeValueAsString(Arrays.asList(contacts)));
+                jsonMapper.writeValueAsString(response));
 
         when(linkRepository.findByConnectionAndExternalIdIn(
                 same(connection), anyList()))

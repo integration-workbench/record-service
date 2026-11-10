@@ -52,14 +52,21 @@ class ContactImportIntegrationTest {
         // Mock the upstream HTTP response with valid contact details,
         // but an external ID exceeding the database column's limit.
         stubCrmResponse("""
-                [{
-                    "source": "SALESFORCE",
-                    "externalId": "%s",
-                    "firstName": "Rollback",
-                    "lastName": "Test",
-                    "email": "rollback@example.com"
-                }]
-                """.formatted("x".repeat(51)));
+        {
+          "contacts": [
+            {
+              "source": "SALESFORCE",
+              "externalId": "%s",
+              "firstName": "Rollback",
+              "lastName": "Test",
+              "email": "rollback@example.com"
+            }
+          ],
+          "totalAvailable": 1,
+          "hasMore": false,
+          "continuationToken": null
+        }
+        """.formatted("x".repeat(51)));
 
         ContactImportResponse result =
                 contactImportService.importContacts(CrmSource.SALESFORCE);
