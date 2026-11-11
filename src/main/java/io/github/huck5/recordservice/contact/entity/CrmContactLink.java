@@ -30,6 +30,10 @@ public class CrmContactLink {
         this.externalId = externalId;
     }
 
+    public Long getId() {
+        return id;
+    }
+
     public CrmConnection getConnection() {
         return connection;
     }

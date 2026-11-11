@@ -15,6 +15,23 @@ public class CrmConnection {
     @Column(name = "crm_account_id", length = 100)
     private String crmAccountId;
 
+    protected CrmConnection() {
+        // Required by JPA
+    }
+
+    public CrmConnection(CrmSource crmSource, String crmAccountId) {
+        this.crmSource = crmSource;
+        this.crmAccountId = crmAccountId;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public CrmSource getCrmSource() {
+        return crmSource;
+    }
+
     public String getCrmAccountId() {
         return crmAccountId;
     }

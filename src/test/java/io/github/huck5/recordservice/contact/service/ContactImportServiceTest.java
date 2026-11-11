@@ -68,7 +68,8 @@ class ContactImportServiceTest {
     private HttpResponse<String> httpResponse;
 
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
-    private final CrmConnection connection = new CrmConnection();
+    private final CrmConnection connection =
+            new CrmConnection(CrmSource.SALESFORCE, "test-account");
 
     private ContactImportService service;
 
