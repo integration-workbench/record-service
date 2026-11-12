@@ -61,9 +61,9 @@ public class ContactImportService {
                         "CrmConnection not found for source: %s".formatted(crmSource.name())));
 
         HttpRequest request = HttpRequest.newBuilder()
-                                         .uri(URI.create(CRM_SERVICE_URI.formatted(crmSource.toString().toLowerCase())))
-                                         .GET()
-                                         .build();
+                .uri(URI.create(CRM_SERVICE_URI.formatted(crmSource.toString().toLowerCase())))
+                .GET()
+                .build();
         HttpResponse<String> response;
         try {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
@@ -90,12 +90,16 @@ public class ContactImportService {
         Set<String> linkedExternalIds = contactLinks.stream().map(CrmContactLink::getExternalId).collect(
                 Collectors.toSet());
 
+        // Setup data for ContactImportResponse
         int imported = 0;
         int skipped = 0;
         int invalidExternalId = 0;
         int invalidContact = 0;
         int failed = 0;
         int fetched = contacts.size();
+        boolean hasMore = retrievalResponse.hasMore();
+        Long totalAvailable = retrievalResponse.totalAvailable();
+        String continuationToken = retrievalResponse.continuationToken();
 
         for (CrmContactDto incoming : contacts) {
             String externalId = incoming.getExternalId();
@@ -117,8 +121,18 @@ public class ContactImportService {
             }
         }
 
-        return ContactImportResponse.builder().source(crmSource).fetched(fetched).imported(imported).skipped(
-                skipped).invalidExternalId(invalidExternalId).invalidContact(invalidContact).failed(failed).build();
+        return ContactImportResponse.builder()
+                .source(crmSource)
+                .fetched(fetched)
+                .imported(imported)
+                .skipped(skipped)
+                .invalidExternalId(invalidExternalId)
+                .invalidContact(invalidContact)
+                .failed(failed)
+                .hasMore(hasMore)
+                .totalAvailable(totalAvailable)
+                .continuationToken(continuationToken)
+                .build();
     }
 
     private void saveContactAndLink(CrmConnection connection, CrmContactDto incoming) {

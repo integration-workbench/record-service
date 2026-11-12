@@ -12,6 +12,9 @@ public class ContactImportResponse {
     private final int invalidExternalId;
     private final int invalidContact;
     private final int failed;
+    private final boolean hasMore;
+    private final Long totalAvailable;
+    private final String continuationToken;
 
     private ContactImportResponse(Builder builder) {
         this.source = builder.source;
@@ -21,6 +24,9 @@ public class ContactImportResponse {
         this.invalidExternalId = builder.invalidExternalId;
         this.invalidContact = builder.invalidContact;
         this.failed = builder.failed;
+        this.hasMore = builder.hasMore;
+        this.totalAvailable = builder.totalAvailable;
+        this.continuationToken = builder.continuationToken;
     }
 
     public CrmSource getSource() {
@@ -51,6 +57,18 @@ public class ContactImportResponse {
         return failed;
     }
 
+    public boolean isHasMore() {
+        return hasMore;
+    }
+
+    public Long getTotalAvailable() {
+        return totalAvailable;
+    }
+
+    public String getContinuationToken() {
+        return continuationToken;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -63,6 +81,9 @@ public class ContactImportResponse {
         private int invalidExternalId;
         private int invalidContact;
         private int failed;
+        private boolean hasMore;
+        private Long totalAvailable;
+        private String continuationToken;
 
         public Builder source(CrmSource source) {
             this.source = source;
@@ -96,6 +117,21 @@ public class ContactImportResponse {
 
         public Builder failed(int failed) {
             this.failed = failed;
+            return this;
+        }
+
+        public Builder hasMore(boolean hasMore) {
+            this.hasMore = hasMore;
+            return this;
+        }
+
+        public Builder totalAvailable(Long totalAvailable) {
+            this.totalAvailable = totalAvailable;
+            return this;
+        }
+
+        public Builder continuationToken(String continuationToken) {
+            this.continuationToken = continuationToken;
             return this;
         }
 
