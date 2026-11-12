@@ -17,9 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.*;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
@@ -41,6 +39,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -90,21 +89,21 @@ class ContactImportServiceTest {
             CrmSource source) throws Exception {
 
         givenSuccessfulResponse(source, """
-        {
-          "contacts": [
-            {
-              "source": "%s",
-              "externalId": "external-1",
-              "firstName": "Bob",
-              "lastName": "Dole",
-              "email": "bob@example.com"
-            }
-          ],
-          "totalAvailable": 1,
-          "hasMore": false,
-          "continuationToken": null
-        }
-        """.formatted(source.name()));
+                {
+                  "contacts": [
+                    {
+                      "source": "%s",
+                      "externalId": "external-1",
+                      "firstName": "Bob",
+                      "lastName": "Dole",
+                      "email": "bob@example.com"
+                    }
+                  ],
+                  "totalAvailable": 1,
+                  "hasMore": false,
+                  "continuationToken": null
+                }
+                """.formatted(source.name()));
 
         when(linkRepository.findByConnectionAndExternalIdIn(
                 same(connection), anyList()))
@@ -309,8 +308,8 @@ class ContactImportServiceTest {
         assertEquals(
                 List.of("failed-1", "valid-1"),
                 linkCaptor.getAllValues().stream()
-                          .map(CrmContactLink::getExternalId)
-                          .toList());
+                        .map(CrmContactLink::getExternalId)
+                        .toList());
 
         verify(transactionManager).rollback(any(TransactionStatus.class));
         verify(transactionManager).commit(any(TransactionStatus.class));
@@ -628,12 +627,12 @@ class ContactImportServiceTest {
 
     private CrmContactDto contact(String externalId, String email) {
         return CrmContactDto.builder()
-                            .source(CrmSource.SALESFORCE)
-                            .externalId(externalId)
-                            .firstName("Bob")
-                            .lastName("Dole")
-                            .email(email)
-                            .build();
+                .source(CrmSource.SALESFORCE)
+                .externalId(externalId)
+                .firstName("Bob")
+                .lastName("Dole")
+                .email(email)
+                .build();
     }
 
     private void assertNoContactWrites() {
@@ -672,5 +671,163 @@ class ContactImportServiceTest {
                                 + result.getFailed(),
                         "Every fetched contact must have exactly one outcome")
         );
+    }
+
+    @ParameterizedTest
+    @MethodSource("retrievalMetadataCases")
+    void importContacts_preservesMetadataForNewAndExistingContacts(
+            CrmSource source,
+            Long totalAvailable,
+            boolean hasMore,
+            String continuationToken,
+            boolean alreadyLinked) throws Exception {
+
+        CrmContactDto incoming = CrmContactDto.builder()
+                .source(source)
+                .externalId("external-1")
+                .firstName("Maria")
+                .lastName("Johnson")
+                .email("maria@example.com")
+                .build();
+
+        ContactRetrievalResponse retrieval = new ContactRetrievalResponse(
+                List.of(incoming),
+                totalAvailable,
+                hasMore,
+                continuationToken);
+
+        givenSuccessfulResponse(
+                source,
+                jsonMapper.writeValueAsString(retrieval));
+
+        Contact localContact =
+                new Contact("Local", "Contact", "local@example.com");
+
+        List<CrmContactLink> existingLinks = alreadyLinked
+                ? List.of(new CrmContactLink(
+                connection, localContact, "external-1"))
+                : List.of();
+
+        when(linkRepository.findByConnectionAndExternalIdIn(
+                same(connection), anyList()))
+                .thenReturn(existingLinks);
+
+        if (!alreadyLinked) {
+            givenTransactions();
+            givenContactCreation();
+        }
+
+        ContactImportResponse result = service.importContacts(source);
+
+        assertCounts(
+                result,
+                1,
+                alreadyLinked ? 0 : 1,
+                alreadyLinked ? 1 : 0,
+                0,
+                0,
+                0);
+
+        assertAll(
+                () -> assertEquals(source, result.getSource()),
+                () -> assertEquals(
+                        totalAvailable, result.getTotalAvailable()),
+                () -> assertEquals(hasMore, result.isHasMore()),
+                () -> assertEquals(
+                        continuationToken, result.getContinuationToken())
+        );
+
+        // Fetch only the current page, even when more records exist.
+        verify(httpClient).send(
+                any(HttpRequest.class),
+                ArgumentMatchers.<HttpResponse.BodyHandler<String>>any());
+
+        if (alreadyLinked) {
+            assertNoContactWrites();
+        } else {
+            verify(contactService)
+                    .insertContact(any(ContactCreateRequest.class));
+
+            verify(linkRepository).save(any(CrmContactLink.class));
+        }
+    }
+
+    private static Stream<Arguments> retrievalMetadataCases() {
+        return Stream.of(
+                // First imports: metadata survives successful creation.
+                Arguments.of(
+                        CrmSource.SALESFORCE,
+                        251L,
+                        true,
+                        "/services/data/v66.0/query/next-page",
+                        false),
+                Arguments.of(
+                        CrmSource.HUBSPOT,
+                        null,
+                        true,
+                        "288431635415",
+                        false),
+
+                // Repeat imports: skipping contacts must preserve metadata too.
+                Arguments.of(
+                        CrmSource.SALESFORCE,
+                        251L,
+                        true,
+                        "/services/data/v66.0/query/next-page",
+                        true),
+                Arguments.of(
+                        CrmSource.HUBSPOT,
+                        null,
+                        true,
+                        "288431635415",
+                        true),
+
+                // Completed retrievals: no next page or continuation token.
+                Arguments.of(
+                        CrmSource.SALESFORCE,
+                        1L,
+                        false,
+                        null,
+                        false),
+                Arguments.of(
+                        CrmSource.HUBSPOT,
+                        null,
+                        false,
+                        null,
+                        false)
+        );
+    }
+
+    @ParameterizedTest
+    @EnumSource(CrmSource.class)
+    void importContacts_whenEmpty_preservesCoverageWithoutWriting(
+            CrmSource source) throws Exception {
+
+        Long totalAvailable =
+                source == CrmSource.SALESFORCE ? 0L : null;
+
+        ContactRetrievalResponse retrieval = new ContactRetrievalResponse(
+                List.of(), totalAvailable, false, null);
+
+        givenSuccessfulResponse(
+                source,
+                jsonMapper.writeValueAsString(retrieval));
+
+        when(linkRepository.findByConnectionAndExternalIdIn(
+                same(connection), anyList()))
+                .thenReturn(List.of());
+
+        ContactImportResponse result = service.importContacts(source);
+
+        assertCounts(result, 0, 0, 0, 0, 0, 0);
+
+        assertAll(
+                () -> assertEquals(
+                        totalAvailable, result.getTotalAvailable()),
+                () -> assertFalse(result.isHasMore()),
+                () -> assertNull(result.getContinuationToken())
+        );
+
+        assertNoContactWrites();
     }
 }

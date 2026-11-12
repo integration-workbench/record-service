@@ -57,6 +57,18 @@ public class ContactImportResponse {
         return failed;
     }
 
+    public boolean isHasMore() {
+        return hasMore;
+    }
+
+    public Long getTotalAvailable() {
+        return totalAvailable;
+    }
+
+    public String getContinuationToken() {
+        return continuationToken;
+    }
+
     public static Builder builder() {
         return new Builder();
     }

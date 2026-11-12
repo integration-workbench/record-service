@@ -292,6 +292,53 @@ class ContactControllerTest {
         verifyNoInteractions(contactImportService, contactService);
     }
 
+    @ParameterizedTest
+    @EnumSource(CrmSource.class)
+    void importContacts_returnsCoverageMetadata(CrmSource source)
+            throws Exception {
+
+        Long totalAvailable =
+                source == CrmSource.SALESFORCE ? 251L : null;
+
+        ContactImportResponse response = ContactImportResponse.builder()
+                .source(source)
+                .fetched(1)
+                .imported(1)
+                .skipped(0)
+                .invalidExternalId(0)
+                .invalidContact(0)
+                .failed(0)
+                .totalAvailable(totalAvailable)
+                .hasMore(true)
+                .continuationToken("next-page")
+                .build();
+
+        when(contactImportService.importContacts(source)).thenReturn(response);
+
+        mvc.perform(post("/contacts/imports")
+                        .queryParam("source", source.name()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(
+                        MediaType.APPLICATION_JSON))
+                .andExpect(content().json("""
+                    {
+                      "source": "%s",
+                      "fetched": 1,
+                      "imported": 1,
+                      "skipped": 0,
+                      "invalidExternalId": 0,
+                      "invalidContact": 0,
+                      "failed": 0,
+                      "totalAvailable": %s,
+                      "hasMore": true,
+                      "continuationToken": "next-page"
+                    }
+                    """.formatted(source.name(), totalAvailable)));
+
+        verify(contactImportService).importContacts(source);
+        verifyNoInteractions(contactService);
+    }
+
     private static Stream<String> invalidContactBodies() {
         return Stream.of(
                 "{\"firstName\":\"%s\"}".formatted("a".repeat(51)),
