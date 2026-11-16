@@ -18,7 +18,15 @@
         <license/>
     </licenses>
     <developers>
-        <developer/>
+        <developer>
+            <id>fcharl</id>
+            <name>Finlay Charles-Lundaahl</name>
+            <roles>
+                <role>architect</role>
+                <role>developer</role>
+            </roles>
+            <timezone>America/Vancouver</timezone>
+        </developer>
     </developers>
     <scm>
         <connection/>
@@ -75,6 +83,15 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-batch-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.batch</groupId>
+            <artifactId>spring-batch-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
