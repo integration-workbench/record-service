@@ -24,7 +24,7 @@ public class ContactImportPersistenceService {
     }
 
     public ImportOutcome importContact(CrmConnection connection, CrmContactDto incoming) {
-
+        return null;
     }
 
     public void saveContactAndLink(CrmConnection connection, CrmContactDto incoming) {
