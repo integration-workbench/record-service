@@ -18,7 +18,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.net.http.HttpClient;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -27,18 +26,18 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ContactServiceTest {
+class ContactCrudServiceTest {
     private static final Long EXISTING_CONTACT_VERSION = 1L;
 
     @Mock
     private ContactRepository repository;
     private ValidatorFactory validatorFactory;
-    private ContactService service;
+    private ContactCrudService service;
 
     @BeforeEach
     void setUp() {
         validatorFactory = Validation.buildDefaultValidatorFactory();
-        service = new ContactService(repository, validatorFactory.getValidator());
+        service = new ContactCrudService(repository, validatorFactory.getValidator());
     }
 
     @AfterEach

@@ -14,11 +14,11 @@ import jakarta.validation.Validator;
 import java.util.Objects;
 
 @Service
-public class ContactService {
+public class ContactCrudService {
     private final ContactRepository contactRepository;
     private final Validator validator;
 
-    public ContactService(ContactRepository contactRepository, Validator validator) {
+    public ContactCrudService(ContactRepository contactRepository, Validator validator) {
         this.contactRepository = contactRepository;
         this.validator = validator;
     }

@@ -44,7 +44,7 @@ class ContactImportPaginationIntegrationTest {
             new MySQLContainer("mysql:8.4");
 
     @Autowired
-    private ContactImportService importer;
+    private ContactImportJobService importer;
 
     @Autowired
     private ContactRepository contacts;
@@ -56,7 +56,7 @@ class ContactImportPaginationIntegrationTest {
     private HttpClient httpClient;
 
     @MockitoSpyBean
-    private ContactService contactService;
+    private ContactCrudService contactCrudService;
 
     @BeforeEach
     void clearImportedData() {
@@ -199,7 +199,7 @@ class ContactImportPaginationIntegrationTest {
             } finally {
                 activeWrites.decrementAndGet();
             }
-        }).when(contactService)
+        }).when(contactCrudService)
                 .insertContact(any(ContactCreateRequest.class));
 
         ContactImportResponse result =

@@ -46,10 +46,10 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ContactImportServiceTest {
+class ContactImportJobServiceTest {
 
     @Mock
-    private ContactService contactService;
+    private ContactCrudService contactCrudService;
 
     @Mock
     private CrmContactLinkRepository linkRepository;
@@ -70,12 +70,12 @@ class ContactImportServiceTest {
     private final CrmConnection connection =
             new CrmConnection(CrmSource.SALESFORCE, "test-account");
 
-    private ContactImportService service;
+    private ContactImportJobService service;
 
     @BeforeEach
     void setUp() {
-        service = new ContactImportService(
-                contactService,
+        service = new ContactImportJobService(
+                contactCrudService,
                 linkRepository,
                 connectionRepository,
                 transactionManager,
@@ -114,7 +114,7 @@ class ContactImportServiceTest {
         Contact savedContact = new Contact(
                 "Bob", "Dole", "bob@example.com");
 
-        when(contactService.insertContact(any(ContactCreateRequest.class)))
+        when(contactCrudService.insertContact(any(ContactCreateRequest.class)))
                 .thenReturn(savedContact);
 
         ContactImportResponse result = service.importContacts(source);
@@ -141,7 +141,7 @@ class ContactImportServiceTest {
         ArgumentCaptor<ContactCreateRequest> requestCaptor =
                 ArgumentCaptor.forClass(ContactCreateRequest.class);
 
-        verify(contactService).insertContact(requestCaptor.capture());
+        verify(contactCrudService).insertContact(requestCaptor.capture());
 
         ContactCreateRequest request = requestCaptor.getValue();
         assertAll(
@@ -214,7 +214,7 @@ class ContactImportServiceTest {
         ArgumentCaptor<ContactCreateRequest> requestCaptor =
                 ArgumentCaptor.forClass(ContactCreateRequest.class);
 
-        verify(contactService).insertContact(requestCaptor.capture());
+        verify(contactCrudService).insertContact(requestCaptor.capture());
         assertEquals(
                 "first@example.com",
                 requestCaptor.getValue().getEmail());
@@ -254,7 +254,7 @@ class ContactImportServiceTest {
         Contact validContact =
                 new Contact("Bob", "Dole", "valid@example.com");
 
-        when(contactService.insertContact(any(ContactCreateRequest.class)))
+        when(contactCrudService.insertContact(any(ContactCreateRequest.class)))
                 .thenThrow(new ContactNotValidException("Invalid email"))
                 .thenReturn(validContact);
 
@@ -263,7 +263,7 @@ class ContactImportServiceTest {
 
         assertCounts(result, 2, 1, 0, 0, 1, 0);
 
-        verify(contactService, times(2))
+        verify(contactCrudService, times(2))
                 .insertContact(any(ContactCreateRequest.class));
 
         ArgumentCaptor<CrmContactLink> linkCaptor =
@@ -339,7 +339,7 @@ class ContactImportServiceTest {
         // The failed first attempt must not cause the second to be skipped.
         assertCounts(result, 2, 1, 0, 0, 0, 1);
 
-        verify(contactService, times(2))
+        verify(contactCrudService, times(2))
                 .insertContact(any(ContactCreateRequest.class));
 
         verify(linkRepository, times(2)).save(any(CrmContactLink.class));
@@ -381,7 +381,7 @@ class ContactImportServiceTest {
 
         givenTransactions();
 
-        when(contactService.insertContact(any(ContactCreateRequest.class)))
+        when(contactCrudService.insertContact(any(ContactCreateRequest.class)))
                 .thenAnswer(invocation -> {
                     ContactCreateRequest request = invocation.getArgument(0);
 
@@ -412,7 +412,7 @@ class ContactImportServiceTest {
 
         assertCounts(result, 6, 1, 2, 1, 1, 1);
 
-        verify(contactService, times(3))
+        verify(contactCrudService, times(3))
                 .insertContact(any(ContactCreateRequest.class));
 
         verify(linkRepository, times(2)).save(any(CrmContactLink.class));
@@ -433,7 +433,7 @@ class ContactImportServiceTest {
         verifyNoInteractions(
                 httpClient,
                 linkRepository,
-                contactService,
+                contactCrudService,
                 transactionManager);
     }
 
@@ -459,7 +459,7 @@ class ContactImportServiceTest {
 
         verifyNoInteractions(
                 linkRepository,
-                contactService,
+                contactCrudService,
                 transactionManager);
     }
 
@@ -483,7 +483,7 @@ class ContactImportServiceTest {
 
         verifyNoInteractions(
                 linkRepository,
-                contactService,
+                contactCrudService,
                 transactionManager);
     }
 
@@ -510,7 +510,7 @@ class ContactImportServiceTest {
 
             verifyNoInteractions(
                     linkRepository,
-                    contactService,
+                    contactCrudService,
                     transactionManager);
         } finally {
             // Clear the interrupt flag so subsequent tests are unaffected.
@@ -532,7 +532,7 @@ class ContactImportServiceTest {
 
         verifyNoInteractions(
                 linkRepository,
-                contactService,
+                contactCrudService,
                 transactionManager);
     }
 
@@ -551,7 +551,7 @@ class ContactImportServiceTest {
                 new DataAccessResourceFailureException(
                         "Database unavailable");
 
-        when(contactService.insertContact(any(ContactCreateRequest.class)))
+        when(contactCrudService.insertContact(any(ContactCreateRequest.class)))
                 .thenThrow(cause);
 
         DataAccessResourceFailureException exception = assertThrows(
@@ -561,7 +561,7 @@ class ContactImportServiceTest {
         assertSame(cause, exception);
 
         // The second contact must not be attempted after a database outage.
-        verify(contactService).insertContact(any(ContactCreateRequest.class));
+        verify(contactCrudService).insertContact(any(ContactCreateRequest.class));
         verify(linkRepository, never()).save(any(CrmContactLink.class));
 
         verify(transactionManager).rollback(any(TransactionStatus.class));
@@ -614,7 +614,7 @@ class ContactImportServiceTest {
     }
 
     private void givenContactCreation() {
-        when(contactService.insertContact(any(ContactCreateRequest.class)))
+        when(contactCrudService.insertContact(any(ContactCreateRequest.class)))
                 .thenAnswer(invocation -> {
                     ContactCreateRequest request = invocation.getArgument(0);
 
@@ -636,7 +636,7 @@ class ContactImportServiceTest {
     }
 
     private void assertNoContactWrites() {
-        verifyNoInteractions(contactService, transactionManager);
+        verifyNoInteractions(contactCrudService, transactionManager);
         verify(linkRepository, never()).save(any(CrmContactLink.class));
     }
 
@@ -745,7 +745,7 @@ class ContactImportServiceTest {
         if (alreadyLinked) {
             assertNoContactWrites();
         } else {
-            verify(contactService)
+            verify(contactCrudService)
                     .insertContact(any(ContactCreateRequest.class));
 
             verify(linkRepository).save(any(CrmContactLink.class));

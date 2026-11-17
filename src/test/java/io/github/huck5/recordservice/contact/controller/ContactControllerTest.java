@@ -7,17 +7,14 @@ import io.github.huck5.recordservice.contact.entity.Contact;
 import io.github.huck5.recordservice.contact.exception.ContactNotFoundException;
 import io.github.huck5.recordservice.contact.exception.ContactNotValidException;
 import io.github.huck5.recordservice.contact.exception.ContactVersionConflictException;
-import io.github.huck5.recordservice.contact.repository.CrmContactLinkRepository;
-import io.github.huck5.recordservice.contact.service.ContactImportService;
-import io.github.huck5.recordservice.contact.service.ContactService;
+import io.github.huck5.recordservice.contact.service.ContactImportJobService;
+import io.github.huck5.recordservice.contact.service.ContactCrudService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
-import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -28,10 +25,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-import java.io.IOException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -54,14 +47,14 @@ class ContactControllerTest {
     @Autowired
     private MockMvc mvc;
     @MockitoBean
-    private ContactImportService contactImportService;
+    private ContactImportJobService contactImportJobService;
     @MockitoBean
-    private ContactService contactService;
+    private ContactCrudService contactCrudService;
 
     @Test
     void getContacts_returnsContactPage() throws Exception {
         Pageable pageable = PageRequest.of(0, 25, Sort.by("id"));
-        when(contactService.getContacts(pageable)).thenReturn(
+        when(contactCrudService.getContacts(pageable)).thenReturn(
                 new PageImpl<>(List.of(new Contact("Bob", "Dole", "bob@example.com")), pageable, 1));
 
         mvc.perform(get("/contacts"))
@@ -78,7 +71,7 @@ class ContactControllerTest {
         when(savedContact.getLastName()).thenReturn("Dole");
         when(savedContact.getEmail()).thenReturn("bob@example.com");
         when(savedContact.getVersion()).thenReturn(0L);
-        when(contactService.insertContact(any(ContactCreateRequest.class)))
+        when(contactCrudService.insertContact(any(ContactCreateRequest.class)))
                 .thenReturn(savedContact);
 
         mvc.perform(post("/contacts")
@@ -99,7 +92,7 @@ class ContactControllerTest {
 
         ArgumentCaptor<ContactCreateRequest> captor =
                 ArgumentCaptor.forClass(ContactCreateRequest.class);
-        verify(contactService).insertContact(captor.capture());
+        verify(contactCrudService).insertContact(captor.capture());
 
         ContactCreateRequest request = captor.getValue();
         assertEquals("Bob", request.getFirstName());
@@ -115,7 +108,7 @@ class ContactControllerTest {
         when(updated.getLastName()).thenReturn("Smith");
         when(updated.getEmail()).thenReturn("new@example.com");
         when(updated.getVersion()).thenReturn(3L);
-        when(contactService.updateContact(eq(42L), any(ContactCreateRequest.class), eq(2L)))
+        when(contactCrudService.updateContact(eq(42L), any(ContactCreateRequest.class), eq(2L)))
                 .thenReturn(updated);
 
         mvc.perform(putContact().queryParam("expectedVersion", "2"))
@@ -128,7 +121,7 @@ class ContactControllerTest {
 
         ArgumentCaptor<ContactCreateRequest> captor =
                 ArgumentCaptor.forClass(ContactCreateRequest.class);
-        verify(contactService).updateContact(eq(42L), captor.capture(), eq(2L));
+        verify(contactCrudService).updateContact(eq(42L), captor.capture(), eq(2L));
 
         ContactCreateRequest request = captor.getValue();
         assertEquals("Robert", request.getFirstName());
@@ -141,7 +134,7 @@ class ContactControllerTest {
         mvc.perform(putContact())
            .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(contactService);
+        verifyNoInteractions(contactCrudService);
     }
 
     @Test
@@ -149,12 +142,12 @@ class ContactControllerTest {
         mvc.perform(putContact().queryParam("expectedVersion", "abc"))
            .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(contactService);
+        verifyNoInteractions(contactCrudService);
     }
 
     @Test
     void updateContact_whenContactIsMissing_returnsNotFound() throws Exception {
-        when(contactService.updateContact(eq(42L), any(ContactCreateRequest.class), eq(2L)))
+        when(contactCrudService.updateContact(eq(42L), any(ContactCreateRequest.class), eq(2L)))
                 .thenThrow(new ContactNotFoundException("Contact 42 not found"));
 
         mvc.perform(putContact().queryParam("expectedVersion", "2"))
@@ -163,7 +156,7 @@ class ContactControllerTest {
 
     @Test
     void updateContact_whenVersionConflicts_returnsConflict() throws Exception {
-        when(contactService.updateContact(eq(42L), any(ContactCreateRequest.class), eq(2L)))
+        when(contactCrudService.updateContact(eq(42L), any(ContactCreateRequest.class), eq(2L)))
                 .thenThrow(new ContactVersionConflictException("Contact 42 version mismatch"));
 
         mvc.perform(putContact().queryParam("expectedVersion", "2"))
@@ -173,7 +166,7 @@ class ContactControllerTest {
     @Test
     void deleteContact_whenOptimisticLockingFails_returnsConflict() throws Exception {
         doThrow(new OptimisticLockingFailureException("Contact changed during delete"))
-                .when(contactService).deleteContact(42L, 2L);
+                .when(contactCrudService).deleteContact(42L, 2L);
 
         mvc.perform(delete("/contacts/{id}", 42)
                    .queryParam("expectedVersion", "2"))
@@ -189,7 +182,7 @@ class ContactControllerTest {
         when(contact.getLastName()).thenReturn("Dole");
         when(contact.getEmail()).thenReturn("bob@example.com");
         when(contact.getVersion()).thenReturn(3L);
-        when(contactService.getContact(42L)).thenReturn(contact);
+        when(contactCrudService.getContact(42L)).thenReturn(contact);
 
         mvc.perform(get("/contacts/{id}", 42))
            .andExpect(status().isOk())
@@ -202,7 +195,7 @@ class ContactControllerTest {
 
     @Test
     void getContact_whenContactIsMissing_returnsNotFound() throws Exception {
-        when(contactService.getContact(99L))
+        when(contactCrudService.getContact(99L))
                 .thenThrow(new ContactNotFoundException("Could not find Contact 99"));
 
         mvc.perform(get("/contacts/{id}", 99))
@@ -217,7 +210,7 @@ class ContactControllerTest {
                    .content(body))
            .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(contactService);
+        verifyNoInteractions(contactCrudService);
     }
 
     @ParameterizedTest
@@ -229,12 +222,12 @@ class ContactControllerTest {
                    .content(body))
            .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(contactService);
+        verifyNoInteractions(contactCrudService);
     }
 
     @Test
     void createContact_whenServiceRejectsBlankDetails_returnsBadRequest() throws Exception {
-        when(contactService.insertContact(any(ContactCreateRequest.class)))
+        when(contactCrudService.insertContact(any(ContactCreateRequest.class)))
                 .thenThrow(new ContactNotValidException(
                         "Provide a first name, last name, or email."));
 
@@ -257,7 +250,7 @@ class ContactControllerTest {
                                                               .failed(1)
                                                               .build();
 
-        when(contactImportService.importContacts(source)).thenReturn(response);
+        when(contactImportJobService.importContacts(source)).thenReturn(response);
 
         mvc.perform(post("/contacts/imports")
                    .queryParam("source", source.name()))
@@ -271,8 +264,8 @@ class ContactControllerTest {
            .andExpect(jsonPath("$.invalidContact").value(2))
            .andExpect(jsonPath("$.failed").value(1));
 
-        verify(contactImportService).importContacts(source);
-        verifyNoInteractions(contactService);
+        verify(contactImportJobService).importContacts(source);
+        verifyNoInteractions(contactCrudService);
     }
 
     @Test
@@ -280,7 +273,7 @@ class ContactControllerTest {
         mvc.perform(post("/contacts/imports"))
            .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(contactImportService, contactService);
+        verifyNoInteractions(contactImportJobService, contactCrudService);
     }
 
     @Test
@@ -289,7 +282,7 @@ class ContactControllerTest {
                    .queryParam("source", "UNSUPPORTED_CRM"))
            .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(contactImportService, contactService);
+        verifyNoInteractions(contactImportJobService, contactCrudService);
     }
 
     @ParameterizedTest
@@ -313,7 +306,7 @@ class ContactControllerTest {
                 .continuationToken("next-page")
                 .build();
 
-        when(contactImportService.importContacts(source)).thenReturn(response);
+        when(contactImportJobService.importContacts(source)).thenReturn(response);
 
         mvc.perform(post("/contacts/imports")
                         .queryParam("source", source.name()))
@@ -335,8 +328,8 @@ class ContactControllerTest {
                     }
                     """.formatted(source.name(), totalAvailable)));
 
-        verify(contactImportService).importContacts(source);
-        verifyNoInteractions(contactService);
+        verify(contactImportJobService).importContacts(source);
+        verifyNoInteractions(contactCrudService);
     }
 
     private static Stream<String> invalidContactBodies() {

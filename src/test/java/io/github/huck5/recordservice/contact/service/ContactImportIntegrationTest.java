@@ -33,7 +33,7 @@ class ContactImportIntegrationTest {
             new MySQLContainer("mysql:8.4");
 
     @Autowired
-    private ContactImportService contactImportService;
+    private ContactImportJobService contactImportJobService;
 
     @Autowired
     private ContactRepository contactRepository;
@@ -69,7 +69,7 @@ class ContactImportIntegrationTest {
         """.formatted("x".repeat(51)));
 
         ContactImportResponse result =
-                contactImportService.importContacts(CrmSource.SALESFORCE);
+                contactImportJobService.importContacts(CrmSource.SALESFORCE);
 
         assertEquals(1, result.getFetched());
         assertEquals(0, result.getImported());
