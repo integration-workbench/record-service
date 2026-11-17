@@ -6,6 +6,10 @@ import io.github.huck5.recordservice.contact.service.ContactImportJobService;
 import io.github.huck5.recordservice.contact.service.ContactCrudService;
 import io.github.huck5.recordservice.CrmSource;
 import jakarta.validation.Valid;
+import org.springframework.batch.core.job.parameters.InvalidJobParametersException;
+import org.springframework.batch.core.launch.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.launch.JobInstanceAlreadyCompleteException;
+import org.springframework.batch.core.launch.JobRestartException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,7 +30,7 @@ public class ContactController {
     }
 
     @PostMapping("/imports")
-    public ContactImportResponse importContact(@RequestParam CrmSource source) {
+    public ContactImportResponse importContact(@RequestParam CrmSource source) throws JobInstanceAlreadyCompleteException, InvalidJobParametersException, JobExecutionAlreadyRunningException, JobRestartException {
         return contactImportJobService.importContacts(source);
     }
 

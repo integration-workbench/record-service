@@ -4,14 +4,18 @@ import io.github.huck5.recordservice.CrmSource;
 import io.github.huck5.recordservice.contact.dto.ContactRetrievalResponse;
 import io.github.huck5.recordservice.contact.exception.ImportRequestFailedException;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 @Service
 public class ContactImportClient {
@@ -25,9 +29,15 @@ public class ContactImportClient {
         this.jsonMapper = jsonMapper;
     }
 
-    public ContactRetrievalResponse fetchPage(CrmSource crmSource) {
+    public ContactRetrievalResponse fetchPage(CrmSource crmSource, String continuationToken) {
+        String url = CRM_SERVICE_URI.formatted(crmSource.name().toLowerCase(Locale.ROOT));
+
+        if(StringUtils.hasText(continuationToken)) {
+            url += "?continuationToken=" + URLEncoder.encode(continuationToken, StandardCharsets.UTF_8);
+        }
+
         HttpRequest request = HttpRequest.newBuilder()
-                                         .uri(URI.create(CRM_SERVICE_URI.formatted(crmSource.toString().toLowerCase())))
+                                         .uri(URI.create(url))
                                          .GET()
                                          .build();
         HttpResponse<String> response;

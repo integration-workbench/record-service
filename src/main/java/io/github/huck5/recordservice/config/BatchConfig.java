@@ -8,6 +8,7 @@ import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration
@@ -31,5 +32,15 @@ public class BatchConfig {
         return new StepBuilder("contactImportStep", jobRepository)
                 .tasklet(tasklet, transactionManager)
                 .build();
+    }
+
+    @Bean
+    public ThreadPoolTaskExecutor prefetchExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(1);
+        executor.setQueueCapacity(10);
+        executor.setThreadNamePrefix("contact-prefetch-");
+        return executor;
     }
 }
