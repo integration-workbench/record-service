@@ -12,7 +12,6 @@ public class ContactImportTasklet implements Tasklet {
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
 
-        //TODO: Perform import work and and update checkpoint state
 
         return RepeatStatus.FINISHED;
     }

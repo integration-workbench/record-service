@@ -13,6 +13,8 @@ import io.github.huck5.recordservice.contact.exception.CrmConnectionNotFundExcep
 import io.github.huck5.recordservice.contact.exception.ImportRequestFailedException;
 import io.github.huck5.recordservice.contact.repository.CrmConnectionRepository;
 import io.github.huck5.recordservice.contact.repository.CrmContactLinkRepository;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -28,6 +30,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -60,28 +63,12 @@ public class ContactImportService {
                 () -> new CrmConnectionNotFundException(
                         "CrmConnection not found for source: %s".formatted(crmSource.name())));
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(CRM_SERVICE_URI.formatted(crmSource.toString().toLowerCase())))
-                .GET()
-                .build();
-        HttpResponse<String> response;
-        try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        JobParameters parameters = new JobParametersBuilder()
+                .addLong("connectionId", crmConnection.getId())
+                .addString("importId", UUID.randomUUID().toString())
+                .toJobParameters();
 
-            if (response.statusCode() != 200) {
-                throw new ImportRequestFailedException(
-                        "Import contacts failed. Status code %s".formatted(response.statusCode()));
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Import contacts request failed", e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Import contacts request interrupted.", e);
-        }
 
-        // Successfully retrieved contacts for specified CRM
-        ContactRetrievalResponse retrievalResponse = jsonMapper.readValue(response.body(), new TypeReference<>() {
-        });
         List<CrmContactDto> contacts = retrievalResponse.contacts();
 
         List<String> externalIds = contacts.stream().map(CrmContactDto::getExternalId).toList();
