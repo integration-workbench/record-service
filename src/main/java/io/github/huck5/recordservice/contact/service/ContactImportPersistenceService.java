@@ -23,6 +23,10 @@ public class ContactImportPersistenceService {
         this.contactCrudService = contactCrudService;
     }
 
+    public ImportOutcome importContact(CrmConnection connection, CrmContactDto incoming) {
+
+    }
+
     public void saveContactAndLink(CrmConnection connection, CrmContactDto incoming) {
         transactionTemplate.executeWithoutResult(status -> {
             ContactCreateRequest request = new ContactCreateRequest(

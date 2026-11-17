@@ -57,9 +57,6 @@ public class ContactImportClient {
         }
 
         // Successfully retrieved contacts for specified CRM
-        ContactRetrievalResponse retrievalResponse = jsonMapper.readValue(response.body(), new TypeReference<>() {
-        });
-
-        return retrievalResponse;
+        return jsonMapper.readValue(response.body(), new TypeReference<>() {});
     }
 }

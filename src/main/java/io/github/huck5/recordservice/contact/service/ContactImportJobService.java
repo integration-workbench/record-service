@@ -8,6 +8,7 @@ import io.github.huck5.recordservice.contact.entity.CrmContactLink;
 import io.github.huck5.recordservice.contact.exception.ContactNotValidException;
 import io.github.huck5.recordservice.contact.exception.CrmConnectionNotFundException;
 import io.github.huck5.recordservice.contact.repository.CrmConnectionRepository;
+import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.JobExecution;
 import org.springframework.batch.core.job.parameters.InvalidJobParametersException;
@@ -17,6 +18,8 @@ import org.springframework.batch.core.launch.JobExecutionAlreadyRunningException
 import org.springframework.batch.core.launch.JobInstanceAlreadyCompleteException;
 import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.batch.core.launch.JobRestartException;
+import org.springframework.batch.core.step.StepExecution;
+import org.springframework.batch.infrastructure.item.ExecutionContext;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -59,6 +62,26 @@ public class ContactImportJobService {
                 .toJobParameters();
 
         JobExecution execution = jobOperator.start(contactImportJob, parameters);
+
+        if (execution.getStatus() != BatchStatus.COMPLETED) {
+            throw new IllegalStateException(
+                    "Import did not complete: " + execution.getStatus());
+        }
+
+        StepExecution step = execution.getStepExecutions().stream()
+                                      .filter(s -> "contactImportStep".equals(s.getStepName()))
+                                      .findFirst()
+                                      .orElseThrow(() ->
+                                              new IllegalStateException("Import step execution missing"));
+
+        ExecutionContext context = step.getExecutionContext();
+
+        long imported = context.getLong("counts.IMPORTED");
+        long skipped = context.getLong("counts.SKIPPED");
+        long invalidExternalId = context.getLong("counts.INVALID_EXTERNAL_ID");
+        long invalidContact = context.getLong("counts.INVALID_CONTACT");
+        long failed = context.getLong("counts.FAILED");
+        long fetched = context.getLong("counts.FETCHED");
 /*
         List<CrmContactDto> contacts = retrievalResponse.contacts();
 
@@ -68,12 +91,6 @@ public class ContactImportJobService {
         Set<String> linkedExternalIds = contactLinks.stream().map(CrmContactLink::getExternalId).collect(
                 Collectors.toSet());
 
-        // Setup data for ContactImportResponse
-        int imported = 0;
-        int skipped = 0;
-        int invalidExternalId = 0;
-        int invalidContact = 0;
-        int failed = 0;
         int fetched = contacts.size();
         boolean hasMore = retrievalResponse.hasMore();
         Long totalAvailable = retrievalResponse.totalAvailable();
@@ -98,6 +115,7 @@ public class ContactImportJobService {
                 }
             }
         }
+        */
 
         return ContactImportResponse.builder()
                                     .source(crmSource)
@@ -107,11 +125,7 @@ public class ContactImportJobService {
                                     .invalidExternalId(invalidExternalId)
                                     .invalidContact(invalidContact)
                                     .failed(failed)
-                                    .hasMore(hasMore)
-                                    .totalAvailable(totalAvailable)
-                                    .continuationToken(continuationToken)
-                                    .build();*/
-        return null;
+                                    .build();
     }
 
 }

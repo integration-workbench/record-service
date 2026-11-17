@@ -6,15 +6,12 @@ import io.github.huck5.recordservice.CrmSource;
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class ContactImportResponse {
     private final CrmSource source;
-    private final int fetched;
-    private final int imported;
-    private final int skipped;
-    private final int invalidExternalId;
-    private final int invalidContact;
-    private final int failed;
-    private final boolean hasMore;
-    private final Long totalAvailable;
-    private final String continuationToken;
+    private final long fetched;
+    private final long imported;
+    private final long skipped;
+    private final long invalidExternalId;
+    private final long invalidContact;
+    private final long failed;
 
     private ContactImportResponse(Builder builder) {
         this.source = builder.source;
@@ -24,49 +21,34 @@ public class ContactImportResponse {
         this.invalidExternalId = builder.invalidExternalId;
         this.invalidContact = builder.invalidContact;
         this.failed = builder.failed;
-        this.hasMore = builder.hasMore;
-        this.totalAvailable = builder.totalAvailable;
-        this.continuationToken = builder.continuationToken;
     }
 
     public CrmSource getSource() {
         return source;
     }
 
-    public int getFetched() {
+    public long getFetched() {
         return fetched;
     }
 
-    public int getImported() {
+    public long getImported() {
         return imported;
     }
 
-    public int getSkipped() {
+    public long getSkipped() {
         return skipped;
     }
 
-    public int getInvalidExternalId() {
+    public long getInvalidExternalId() {
         return invalidExternalId;
     }
 
-    public int getInvalidContact() {
+    public long getInvalidContact() {
         return invalidContact;
     }
 
-    public int getFailed() {
+    public long getFailed() {
         return failed;
-    }
-
-    public boolean isHasMore() {
-        return hasMore;
-    }
-
-    public Long getTotalAvailable() {
-        return totalAvailable;
-    }
-
-    public String getContinuationToken() {
-        return continuationToken;
     }
 
     public static Builder builder() {
@@ -75,63 +57,45 @@ public class ContactImportResponse {
 
     public static class Builder {
         private CrmSource source;
-        private int fetched;
-        private int imported;
-        private int skipped;
-        private int invalidExternalId;
-        private int invalidContact;
-        private int failed;
-        private boolean hasMore;
-        private Long totalAvailable;
-        private String continuationToken;
+        private long fetched;
+        private long imported;
+        private long skipped;
+        private long invalidExternalId;
+        private long invalidContact;
+        private long failed;
 
         public Builder source(CrmSource source) {
             this.source = source;
             return this;
         }
 
-        public Builder fetched(int fetched) {
+        public Builder fetched(long fetched) {
             this.fetched = fetched;
             return this;
         }
 
-        public Builder imported(int imported) {
+        public Builder imported(long imported) {
             this.imported = imported;
             return this;
         }
 
-        public Builder skipped(int skipped) {
+        public Builder skipped(long skipped) {
             this.skipped = skipped;
             return this;
         }
 
-        public Builder invalidExternalId(int invalidExternalId) {
+        public Builder invalidExternalId(long invalidExternalId) {
             this.invalidExternalId = invalidExternalId;
             return this;
         }
 
-        public Builder invalidContact(int invalidContact) {
+        public Builder invalidContact(long invalidContact) {
             this.invalidContact = invalidContact;
             return this;
         }
 
-        public Builder failed(int failed) {
+        public Builder failed(long failed) {
             this.failed = failed;
-            return this;
-        }
-
-        public Builder hasMore(boolean hasMore) {
-            this.hasMore = hasMore;
-            return this;
-        }
-
-        public Builder totalAvailable(Long totalAvailable) {
-            this.totalAvailable = totalAvailable;
-            return this;
-        }
-
-        public Builder continuationToken(String continuationToken) {
-            this.continuationToken = continuationToken;
             return this;
         }
 

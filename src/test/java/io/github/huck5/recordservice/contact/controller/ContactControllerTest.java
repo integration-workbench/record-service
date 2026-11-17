@@ -301,9 +301,6 @@ class ContactControllerTest {
                 .invalidExternalId(0)
                 .invalidContact(0)
                 .failed(0)
-                .totalAvailable(totalAvailable)
-                .hasMore(true)
-                .continuationToken("next-page")
                 .build();
 
         when(contactImportJobService.importContacts(source)).thenReturn(response);
