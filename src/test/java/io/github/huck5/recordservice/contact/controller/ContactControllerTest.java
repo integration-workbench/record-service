@@ -58,7 +58,7 @@ class ContactControllerTest {
     private ContactCrudService contactCrudService;
 
     @Test
-    void getContacts_returnsContactPage() throws Exception {
+    void getContactsReturnsContactPage() throws Exception {
         Pageable pageable = PageRequest.of(0, 25, Sort.by("id"));
         when(contactCrudService.getContacts(pageable)).thenReturn(
                 new PageImpl<>(List.of(new Contact("Bob", "Dole", "bob@example.com")), pageable, 1));
@@ -70,7 +70,7 @@ class ContactControllerTest {
     }
 
     @Test
-    void createContact_bindsRequestAndReturnsContactResponse() throws Exception {
+    void createContactBindsRequestAndReturnsContactResponse() throws Exception {
         Contact savedContact = mock(Contact.class);
         when(savedContact.getId()).thenReturn(42L);
         when(savedContact.getFirstName()).thenReturn("Bob");
@@ -107,7 +107,7 @@ class ContactControllerTest {
     }
 
     @Test
-    void updateContact_bindsRequestAndReturnsUpdatedContact() throws Exception {
+    void updateContactBindsRequestAndReturnsUpdatedContact() throws Exception {
         Contact updated = mock(Contact.class);
         when(updated.getId()).thenReturn(42L);
         when(updated.getFirstName()).thenReturn("Robert");
@@ -136,7 +136,7 @@ class ContactControllerTest {
     }
 
     @Test
-    void updateContact_whenExpectedVersionIsMissing_returnsBadRequest() throws Exception {
+    void updateContactWhenExpectedVersionIsMissingReturnsBadRequest() throws Exception {
         mvc.perform(putContact())
            .andExpect(status().isBadRequest());
 
@@ -144,7 +144,7 @@ class ContactControllerTest {
     }
 
     @Test
-    void updateContact_whenExpectedVersionIsNotNumeric_returnsBadRequest() throws Exception {
+    void updateContactWhenExpectedVersionIsNotNumericReturnsBadRequest() throws Exception {
         mvc.perform(putContact().queryParam("expectedVersion", "abc"))
            .andExpect(status().isBadRequest());
 
@@ -152,7 +152,7 @@ class ContactControllerTest {
     }
 
     @Test
-    void updateContact_whenContactIsMissing_returnsNotFound() throws Exception {
+    void updateContactWhenContactIsMissingReturnsNotFound() throws Exception {
         when(contactCrudService.updateContact(eq(42L), any(ContactCreateRequest.class), eq(2L)))
                 .thenThrow(new ContactNotFoundException("Contact 42 not found"));
 
@@ -161,7 +161,7 @@ class ContactControllerTest {
     }
 
     @Test
-    void updateContact_whenVersionConflicts_returnsConflict() throws Exception {
+    void updateContactWhenVersionConflictsReturnsConflict() throws Exception {
         when(contactCrudService.updateContact(eq(42L), any(ContactCreateRequest.class), eq(2L)))
                 .thenThrow(new ContactVersionConflictException("Contact 42 version mismatch"));
 
@@ -170,7 +170,7 @@ class ContactControllerTest {
     }
 
     @Test
-    void deleteContact_whenOptimisticLockingFails_returnsConflict() throws Exception {
+    void deleteContactWhenOptimisticLockingFailsReturnsConflict() throws Exception {
         doThrow(new OptimisticLockingFailureException("Contact changed during delete"))
                 .when(contactCrudService).deleteContact(42L, 2L);
 
@@ -181,7 +181,7 @@ class ContactControllerTest {
     }
 
     @Test
-    void getContact_whenContactExists_returnsFieldsAndVersion() throws Exception {
+    void getContactWhenContactExistsReturnsFieldsAndVersion() throws Exception {
         Contact contact = mock(Contact.class);
         when(contact.getId()).thenReturn(42L);
         when(contact.getFirstName()).thenReturn("Bob");
@@ -200,7 +200,7 @@ class ContactControllerTest {
     }
 
     @Test
-    void getContact_whenContactIsMissing_returnsNotFound() throws Exception {
+    void getContactWhenContactIsMissingReturnsNotFound() throws Exception {
         when(contactCrudService.getContact(99L))
                 .thenThrow(new ContactNotFoundException("Could not find Contact 99"));
 
@@ -210,7 +210,7 @@ class ContactControllerTest {
 
     @ParameterizedTest
     @MethodSource("invalidContactBodies")
-    void createContact_whenFieldIsInvalid_returnsBadRequest(String body) throws Exception {
+    void createContactWhenFieldIsInvalidReturnsBadRequest(String body) throws Exception {
         mvc.perform(post("/contacts")
                    .contentType(MediaType.APPLICATION_JSON)
                    .content(body))
@@ -221,7 +221,7 @@ class ContactControllerTest {
 
     @ParameterizedTest
     @MethodSource("invalidContactBodies")
-    void updateContact_whenFieldIsInvalid_returnsBadRequest(String body) throws Exception {
+    void updateContactWhenFieldIsInvalidReturnsBadRequest(String body) throws Exception {
         mvc.perform(put("/contacts/{id}", 42)
                    .queryParam("expectedVersion", "1")
                    .contentType(MediaType.APPLICATION_JSON)
@@ -232,7 +232,7 @@ class ContactControllerTest {
     }
 
     @Test
-    void createContact_whenServiceRejectsBlankDetails_returnsBadRequest() throws Exception {
+    void createContactWhenServiceRejectsBlankDetailsReturnsBadRequest() throws Exception {
         when(contactCrudService.insertContact(any(ContactCreateRequest.class)))
                 .thenThrow(new ContactNotValidException(
                         "Provide a first name, last name, or email."));
@@ -245,7 +245,7 @@ class ContactControllerTest {
 
     @ParameterizedTest
     @EnumSource(CrmSource.class)
-    void importContacts_returnsImportSummary(CrmSource source) throws Exception {
+    void importContactsReturnsImportSummary(CrmSource source) throws Exception {
         ContactImportResponse response = ContactImportResponse.builder()
                                                               .source(source)
                                                               .fetched(15)
@@ -278,7 +278,7 @@ class ContactControllerTest {
     }
 
     @Test
-    void importContacts_whenSourceIsMissing_returnsBadRequest() throws Exception {
+    void importContactsWhenSourceIsMissingReturnsBadRequest() throws Exception {
         mvc.perform(post("/contacts/imports"))
            .andExpect(status().isBadRequest());
 
@@ -286,7 +286,7 @@ class ContactControllerTest {
     }
 
     @Test
-    void importContacts_whenSourceIsUnsupported_returnsBadRequest() throws Exception {
+    void importContactsWhenSourceIsUnsupportedReturnsBadRequest() throws Exception {
         mvc.perform(post("/contacts/imports")
                    .queryParam("source", "UNSUPPORTED_CRM"))
            .andExpect(status().isBadRequest());
@@ -296,7 +296,7 @@ class ContactControllerTest {
 
     @ParameterizedTest
     @MethodSource("importFailures")
-    void importContacts_whenJobFails_returnsProblemDetail(
+    void importContactsWhenJobFailsReturnsProblemDetail(
             Throwable cause, int expectedStatus, String expectedDetail) throws Exception {
         var failure = new ImportJobFailedException("Internal diagnostic message", cause);
         // Additional failures are diagnostics; they must not override the primary failure.
