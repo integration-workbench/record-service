@@ -2,6 +2,7 @@ package io.github.huck5.recordservice.contact.batch;
 
 import io.github.huck5.recordservice.CrmSource;
 import io.github.huck5.recordservice.contact.client.ContactImportClient;
+import io.github.huck5.recordservice.contact.entity.Contact;
 import io.github.huck5.recordservice.contact.exception.ImportRequestFailedException;
 import io.github.huck5.recordservice.contact.repository.ContactRepository;
 import io.github.huck5.recordservice.contact.repository.CrmConnectionRepository;
@@ -17,6 +18,7 @@ import org.springframework.batch.core.job.JobExecution;
 import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.StepExecution;
 import org.springframework.batch.infrastructure.item.ExecutionContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -84,7 +86,7 @@ class ContactImportJobIntegrationTest {
     @ValueSource(booleans = {false, true})
     void retrievalFailureMarksActualJobFailedAndPreservesEarlierCommits(boolean failOnSecondPage)
             throws Exception {
-        var failure = new ImportRequestFailedException("CRM unavailable");
+        ImportRequestFailedException failure = new ImportRequestFailedException("CRM unavailable");
         if (failOnSecondPage) {
             when(client.fetchPage(CrmSource.SALESFORCE, null)).thenReturn(ContactImportFixtures.page("page-2", "one"));
             when(client.fetchPage(CrmSource.SALESFORCE, "page-2")).thenThrow(failure);
@@ -107,7 +109,7 @@ class ContactImportJobIntegrationTest {
                 .thenThrow(new ImportRequestFailedException("Page two unavailable"));
         JobExecution failed = operator.start(job, parameters);
         assertSavedStatus(failed, BatchStatus.FAILED);
-        var first = contacts.findAll().getFirst();
+        Contact first = contacts.findAll().getFirst();
         first.setEmail("local-edit@example.com");
         contacts.saveAndFlush(first);
 
@@ -132,12 +134,12 @@ class ContactImportJobIntegrationTest {
     private void assertSavedStatus(JobExecution execution, BatchStatus expected) {
         assertEquals(expected, execution.getStatus());
         assertEquals(expected, jobs.getJobExecution(execution.getId()).getStatus());
-        var step = execution.getStepExecutions().iterator().next();
+        StepExecution step = execution.getStepExecutions().iterator().next();
         assertEquals(expected, jobs.getStepExecution(step.getId()).getStatus());
     }
 
     private ExecutionContext savedCounts(JobExecution execution) {
-        var step = execution.getStepExecutions().iterator().next();
+        StepExecution step = execution.getStepExecutions().iterator().next();
         return jobs.getStepExecution(step.getId()).getExecutionContext();
     }
 

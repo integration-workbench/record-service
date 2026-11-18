@@ -2,7 +2,9 @@ package io.github.huck5.recordservice.contact.service;
 
 import io.github.huck5.recordservice.CrmSource;
 import io.github.huck5.recordservice.contact.dto.CrmContactDto;
+import io.github.huck5.recordservice.contact.entity.Contact;
 import io.github.huck5.recordservice.contact.entity.CrmConnection;
+import io.github.huck5.recordservice.contact.entity.CrmContactLink;
 import io.github.huck5.recordservice.contact.repository.ContactRepository;
 import io.github.huck5.recordservice.contact.repository.CrmConnectionRepository;
 import io.github.huck5.recordservice.contact.repository.CrmContactLinkRepository;
@@ -50,10 +52,10 @@ class ContactImportPersistenceServiceIntegrationTest {
     @Test
     void createsContactAndLinkThenSkipsDuplicateWithoutOverwritingLocalEdits() {
         assertEquals(ImportOutcome.IMPORTED, persistence.importContact(connection, contact("one")));
-        var link = links.findAll().getFirst();
+        CrmContactLink link = links.findAll().getFirst();
         assertEquals(connection.getId(), link.getConnection().getId());
         assertEquals("one", link.getExternalId());
-        var saved = contacts.findById(link.getContact().getId()).orElseThrow();
+        Contact saved = contacts.findById(link.getContact().getId()).orElseThrow();
         assertEquals("Bob", saved.getFirstName());
         assertEquals("Dole", saved.getLastName());
         assertEquals("bob@example.com", saved.getEmail());
