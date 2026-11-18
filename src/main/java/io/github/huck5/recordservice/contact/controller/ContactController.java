@@ -1,12 +1,15 @@
 package io.github.huck5.recordservice.contact.controller;
 
-import io.github.huck5.recordservice.contact.dto.*;
+import io.github.huck5.recordservice.CrmSource;
+import io.github.huck5.recordservice.contact.dto.ContactCreateRequest;
+import io.github.huck5.recordservice.contact.dto.ContactDto;
+import io.github.huck5.recordservice.contact.dto.ContactImportResponse;
+import io.github.huck5.recordservice.contact.dto.ContactResponse;
 import io.github.huck5.recordservice.contact.entity.Contact;
 import io.github.huck5.recordservice.contact.exception.ImportJobFailedException;
 import io.github.huck5.recordservice.contact.exception.ImportRequestFailedException;
-import io.github.huck5.recordservice.contact.service.ContactImportJobService;
 import io.github.huck5.recordservice.contact.service.ContactCrudService;
-import io.github.huck5.recordservice.CrmSource;
+import io.github.huck5.recordservice.contact.service.ContactImportJobService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +27,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.http.HttpTimeoutException;
-import java.util.Arrays;
 
 @RestController
 @RequestMapping("/contacts")
@@ -100,9 +102,7 @@ public class ContactController {
             failedStatus = HttpStatus.INTERNAL_SERVER_ERROR;
             failedDetail = "The contact import did not complete.";
         }
-        Arrays.stream(exception.getSuppressed()).forEach(failure -> {
-            log.error("Contact import failed", exception);
-        });
+        log.error("Contact import failed", exception);
 
         ProblemDetail detail =
                 ProblemDetail.forStatusAndDetail(failedStatus, failedDetail);
