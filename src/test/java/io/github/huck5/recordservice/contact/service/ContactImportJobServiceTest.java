@@ -1,6 +1,7 @@
 package io.github.huck5.recordservice.contact.service;
 
 import io.github.huck5.recordservice.CrmSource;
+import io.github.huck5.recordservice.contact.dto.ContactImportResponse;
 import io.github.huck5.recordservice.contact.entity.CrmConnection;
 import io.github.huck5.recordservice.contact.exception.CrmConnectionNotFundException;
 import io.github.huck5.recordservice.contact.exception.ImportJobFailedException;
@@ -19,6 +20,8 @@ import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.JobExecution;
 import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.launch.JobOperator;
+import org.springframework.batch.core.step.StepExecution;
+import org.springframework.batch.infrastructure.item.ExecutionContext;
 import org.springframework.batch.test.MetaDataInstanceFactory;
 
 import java.util.Optional;
@@ -50,9 +53,9 @@ class ContactImportJobServiceTest {
         when(connection.getId()).thenReturn(42L);
         JobExecution execution = MetaDataInstanceFactory.createJobExecution();
         execution.setStatus(BatchStatus.COMPLETED);
-        var step = MetaDataInstanceFactory.createStepExecution(execution, "contactImportStep", 1L);
+        StepExecution step = MetaDataInstanceFactory.createStepExecution(execution, "contactImportStep", 1L);
         execution.addStepExecution(step);
-        var context = step.getExecutionContext();
+        ExecutionContext context = step.getExecutionContext();
         context.putLong("counts.FETCHED", 15L);
         context.putLong("counts.IMPORTED", 5L);
         context.putLong("counts.SKIPPED", 4L);
@@ -61,9 +64,9 @@ class ContactImportJobServiceTest {
         context.putLong("counts.FAILED", 1L);
         when(operator.start(same(job), any(JobParameters.class))).thenReturn(execution);
 
-        var response = service.importContacts(source);
+        ContactImportResponse response = service.importContacts(source);
 
-        var parameters = ArgumentCaptor.forClass(JobParameters.class);
+        ArgumentCaptor<JobParameters> parameters = ArgumentCaptor.forClass(JobParameters.class);
         verify(operator).start(same(job), parameters.capture());
         assertEquals(42L, parameters.getValue().getLong(ContactImportJobService.CONNECTION_ID));
         assertEquals(source.name(), parameters.getValue().getString(ContactImportJobService.CRM_SOURCE));
@@ -94,13 +97,13 @@ class ContactImportJobServiceTest {
         when(connection.getId()).thenReturn(42L);
         JobExecution execution = MetaDataInstanceFactory.createJobExecution();
         execution.setStatus(BatchStatus.FAILED);
-        var primary = new ExecutionException(new ImportRequestFailedException("Page two failed"));
-        var additional = new IllegalStateException("Additional failure");
+        ExecutionException primary = new ExecutionException(new ImportRequestFailedException("Page two failed"));
+        IllegalStateException additional = new IllegalStateException("Additional failure");
         execution.addFailureException(primary);
         execution.addFailureException(additional);
         when(operator.start(same(job), any(JobParameters.class))).thenReturn(execution);
 
-        var failure = assertThrows(ImportJobFailedException.class,
+        ImportJobFailedException failure = assertThrows(ImportJobFailedException.class,
                 () -> service.importContacts(CrmSource.SALESFORCE));
 
         // Batch aggregates failures through a Set; its returned order is not guaranteed.
@@ -119,7 +122,7 @@ class ContactImportJobServiceTest {
         execution.setStatus(status);
         when(operator.start(same(job), any(JobParameters.class))).thenReturn(execution);
 
-        var failure = assertThrows(ImportJobFailedException.class,
+        ImportJobFailedException failure = assertThrows(ImportJobFailedException.class,
                 () -> service.importContacts(CrmSource.SALESFORCE));
 
         assertNull(failure.getCause());

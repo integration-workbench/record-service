@@ -1,6 +1,7 @@
 package io.github.huck5.recordservice.contact.client;
 
 import io.github.huck5.recordservice.CrmSource;
+import io.github.huck5.recordservice.contact.dto.ContactRetrievalResponse;
 import io.github.huck5.recordservice.contact.exception.ImportRequestFailedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,14 +47,14 @@ class ContactImportClientTest {
                  "totalAvailable":251,"hasMore":true,"continuationToken":"page-2"}
                 """.formatted(source.name()));
 
-        var page = client.fetchPage(source, null);
+        ContactRetrievalResponse page = client.fetchPage(source, null);
 
         assertEquals(1, page.contacts().size());
         assertEquals("id-1", page.contacts().getFirst().getExternalId());
         assertEquals(251L, page.totalAvailable());
         assertTrue(page.hasMore());
         assertEquals("page-2", page.continuationToken());
-        var request = ArgumentCaptor.forClass(HttpRequest.class);
+        ArgumentCaptor<HttpRequest> request = ArgumentCaptor.forClass(HttpRequest.class);
         verify(http).send(request.capture(), ArgumentMatchers.<HttpResponse.BodyHandler<String>>any());
         assertEquals("GET", request.getValue().method());
         assertEquals("http://localhost:8080/" + source.name().toLowerCase(Locale.ROOT) + "/contacts",
@@ -68,7 +69,7 @@ class ContactImportClientTest {
 
         client.fetchPage(CrmSource.SALESFORCE, "/query/next?after=a+b&key=x=y");
 
-        var request = ArgumentCaptor.forClass(HttpRequest.class);
+        ArgumentCaptor<HttpRequest> request = ArgumentCaptor.forClass(HttpRequest.class);
         verify(http).send(request.capture(), ArgumentMatchers.<HttpResponse.BodyHandler<String>>any());
         assertEquals("continuationToken=%2Fquery%2Fnext%3Fafter%3Da%2Bb%26key%3Dx%3Dy",
                 request.getValue().uri().getRawQuery());
@@ -80,7 +81,7 @@ class ContactImportClientTest {
                 .thenReturn(response);
         when(response.statusCode()).thenReturn(503);
 
-        var failure = assertThrows(ImportRequestFailedException.class,
+        ImportRequestFailedException failure = assertThrows(ImportRequestFailedException.class,
                 () -> client.fetchPage(CrmSource.HUBSPOT, null));
 
         assertTrue(failure.getMessage().contains("503"));
@@ -93,7 +94,7 @@ class ContactImportClientTest {
         when(http.send(any(HttpRequest.class), ArgumentMatchers.<HttpResponse.BodyHandler<String>>any()))
                 .thenThrow(cause);
 
-        var failure = assertThrows(ImportRequestFailedException.class,
+        ImportRequestFailedException failure = assertThrows(ImportRequestFailedException.class,
                 () -> client.fetchPage(CrmSource.HUBSPOT, null));
 
         assertSame(cause, failure.getCause());
@@ -101,11 +102,11 @@ class ContactImportClientTest {
 
     @Test
     void interruptionPreservesCauseAndRestoresInterruptFlag() throws Exception {
-        var cause = new InterruptedException("Request interrupted");
+        InterruptedException cause = new InterruptedException("Request interrupted");
         when(http.send(any(HttpRequest.class), ArgumentMatchers.<HttpResponse.BodyHandler<String>>any()))
                 .thenThrow(cause);
         try {
-            var failure = assertThrows(ImportRequestFailedException.class,
+            ImportRequestFailedException failure = assertThrows(ImportRequestFailedException.class,
                     () -> client.fetchPage(CrmSource.HUBSPOT, null));
             assertSame(cause, failure.getCause());
             assertTrue(Thread.currentThread().isInterrupted());

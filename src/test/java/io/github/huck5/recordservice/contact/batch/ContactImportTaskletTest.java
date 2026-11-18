@@ -13,12 +13,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.scope.context.StepContext;
 import org.springframework.batch.core.step.StepContribution;
 import org.springframework.batch.core.step.StepExecution;
+import org.springframework.batch.infrastructure.item.ExecutionContext;
 import org.springframework.batch.infrastructure.repeat.RepeatStatus;
 import org.springframework.batch.test.MetaDataInstanceFactory;
 import org.springframework.dao.DataAccessResourceFailureException;
@@ -28,6 +30,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static io.github.huck5.recordservice.support.ContactImportFixtures.*;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -72,15 +75,15 @@ class ContactImportTaskletTest {
 
         assertEquals(RepeatStatus.FINISHED, execute());
 
-        var context = step.getExecutionContext();
+        ExecutionContext context = step.getExecutionContext();
         assertEquals(6L, context.getLong("counts.FETCHED"));
         assertEquals(2L, context.getLong("counts.IMPORTED"));
-        for (var outcome : ImportOutcome.values()) {
+        for (ImportOutcome outcome : ImportOutcome.values()) {
             if (outcome != ImportOutcome.IMPORTED) {
                 assertEquals(1L, context.getLong("counts." + outcome.name()), outcome.name());
             }
         }
-        var writes = inOrder(persistence);
+        InOrder writes = inOrder(persistence);
         for (String id : new String[]{"one", "two", "three", "four", "five", "six"}) {
             writes.verify(persistence).importContact(connection, contact(id));
         }
@@ -97,7 +100,7 @@ class ContactImportTaskletTest {
         assertEquals(RepeatStatus.FINISHED, execute());
 
         assertEquals(0L, step.getExecutionContext().getLong("counts.FETCHED"));
-        for (var outcome : ImportOutcome.values()) {
+        for (ImportOutcome outcome : ImportOutcome.values()) {
             assertEquals(0L, step.getExecutionContext().getLong("counts." + outcome.name()));
         }
         verifyNoInteractions(persistence);
@@ -107,12 +110,12 @@ class ContactImportTaskletTest {
 
     @Test
     void fetchesNextPageDuringCurrentPersistenceWithoutReadingFurtherAhead() throws Exception {
-        var firstWrite = new CountDownLatch(1);
-        var secondFetched = new CountDownLatch(1);
-        var releaseFirst = new CountDownLatch(1);
-        var secondWrite = new CountDownLatch(1);
-        var thirdFetched = new CountDownLatch(1);
-        var releaseSecond = new CountDownLatch(1);
+        CountDownLatch firstWrite = new CountDownLatch(1);
+        CountDownLatch secondFetched = new CountDownLatch(1);
+        CountDownLatch releaseFirst = new CountDownLatch(1);
+        CountDownLatch secondWrite = new CountDownLatch(1);
+        CountDownLatch thirdFetched = new CountDownLatch(1);
+        CountDownLatch releaseSecond = new CountDownLatch(1);
         when(client.fetchPage(CrmSource.SALESFORCE, null)).thenReturn(page("page-2", "one"));
         when(client.fetchPage(CrmSource.SALESFORCE, "page-2")).thenAnswer(invocation -> {
             assertTrue(firstWrite.await(5, SECONDS), "Page one persistence never started");
@@ -136,9 +139,9 @@ class ContactImportTaskletTest {
         });
         when(persistence.importContact(connection, contact("three"))).thenReturn(ImportOutcome.IMPORTED);
 
-        var caller = Executors.newSingleThreadExecutor();
+        ExecutorService caller = Executors.newSingleThreadExecutor();
         try {
-            var result = caller.submit(this::execute);
+            Future<RepeatStatus> result = caller.submit(this::execute);
             assertTrue(secondFetched.await(5, SECONDS), "Page two was not fetched during page one persistence");
             verify(client, never()).fetchPage(CrmSource.SALESFORCE, "page-3");
             verify(persistence, never()).importContact(connection, contact("two"));
@@ -150,7 +153,7 @@ class ContactImportTaskletTest {
             releaseSecond.countDown();
             assertEquals(RepeatStatus.FINISHED, result.get(5, SECONDS));
             assertEquals(3L, step.getExecutionContext().getLong("counts.IMPORTED"));
-            var writes = inOrder(persistence);
+            InOrder writes = inOrder(persistence);
             writes.verify(persistence).importContact(connection, contact("one"));
             writes.verify(persistence).importContact(connection, contact("two"));
             writes.verify(persistence).importContact(connection, contact("three"));
@@ -164,12 +167,12 @@ class ContactImportTaskletTest {
 
     @Test
     void subsequentRetrievalFailureEscapesInsteadOfReturningFinished() {
-        var cause = new ImportRequestFailedException("Page two unavailable");
+        ImportRequestFailedException cause = new ImportRequestFailedException("Page two unavailable");
         when(client.fetchPage(CrmSource.SALESFORCE, null)).thenReturn(page("page-2", "one"));
         when(client.fetchPage(CrmSource.SALESFORCE, "page-2")).thenThrow(cause);
         when(persistence.importContact(connection, contact("one"))).thenReturn(ImportOutcome.IMPORTED);
 
-        var failure = assertThrows(ExecutionException.class, this::execute);
+        ExecutionException failure = assertThrows(ExecutionException.class, this::execute);
 
         assertSame(cause, failure.getCause());
         verify(persistence).importContact(connection, contact("one"));
@@ -179,7 +182,7 @@ class ContactImportTaskletTest {
     @Test
     void unexpectedDatabaseFailureStopsBeforeProcessingRemainingContacts() {
         when(client.fetchPage(CrmSource.SALESFORCE, null)).thenReturn(page(null, "one", "two"));
-        var cause = new DataAccessResourceFailureException("Database unavailable");
+        DataAccessResourceFailureException cause = new DataAccessResourceFailureException("Database unavailable");
         when(persistence.importContact(connection, contact("one"))).thenThrow(cause);
 
         assertSame(cause, assertThrows(DataAccessResourceFailureException.class, this::execute));

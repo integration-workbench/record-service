@@ -298,7 +298,7 @@ class ContactControllerTest {
     @MethodSource("importFailures")
     void importContactsWhenJobFailsReturnsProblemDetail(
             Throwable cause, int expectedStatus, String expectedDetail) throws Exception {
-        var failure = new ImportJobFailedException("Internal diagnostic message", cause);
+        ImportJobFailedException failure = new ImportJobFailedException("Internal diagnostic message", cause);
         // Additional failures are diagnostics; they must not override the primary failure.
         failure.addSuppressed(new HttpTimeoutException("Suppressed timeout"));
         when(contactImportJobService.importContacts(CrmSource.SALESFORCE)).thenThrow(failure);

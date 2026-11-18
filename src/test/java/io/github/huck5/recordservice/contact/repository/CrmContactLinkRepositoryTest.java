@@ -54,7 +54,7 @@ class CrmContactLinkRepositoryTest {
     @Test
     void databaseRejectsDuplicateExternalIdentity() {
         links.saveAndFlush(new CrmContactLink(salesforce, savedContact(), "same-id"));
-        var duplicate = new CrmContactLink(salesforce, savedContact(), "same-id");
+        CrmContactLink duplicate = new CrmContactLink(salesforce, savedContact(), "same-id");
 
         assertThrows(DataIntegrityViolationException.class, () -> links.saveAndFlush(duplicate));
         assertEquals(1, links.count());
@@ -62,9 +62,9 @@ class CrmContactLinkRepositoryTest {
 
     @Test
     void localContactCanHaveOnlyOneLinkPerConnection() {
-        var contact = savedContact();
+        Contact contact = savedContact();
         links.saveAndFlush(new CrmContactLink(salesforce, contact, "first-id"));
-        var duplicate = new CrmContactLink(salesforce, contact, "second-id");
+        CrmContactLink duplicate = new CrmContactLink(salesforce, contact, "second-id");
 
         assertThrows(DataIntegrityViolationException.class, () -> links.saveAndFlush(duplicate));
         assertEquals(1, links.count());
