@@ -39,12 +39,9 @@ public class ContactImportJobService {
     private final CrmConnectionRepository crmConnectionRepository;
     private final JobOperator jobOperator;
     private final Job contactImportJob;
-    private final ContactImportPersistenceService contactImportPersistenceService;
 
-    public ContactImportJobService(ContactImportPersistenceService contactImportPersistenceService,
-                                   CrmConnectionRepository crmConnectionRepository,
+    public ContactImportJobService(CrmConnectionRepository crmConnectionRepository,
                                    JobOperator jobOperator, @Qualifier("contactImportJob") Job contactImportJob) {
-        this.contactImportPersistenceService = contactImportPersistenceService;
         this.crmConnectionRepository = crmConnectionRepository;
         this.jobOperator = jobOperator;
         this.contactImportJob = contactImportJob;
@@ -69,62 +66,21 @@ public class ContactImportJobService {
         }
 
         StepExecution step = execution.getStepExecutions().stream()
-                                      .filter(s -> "contactImportStep".equals(s.getStepName()))
+                                      .filter(s -> "contactImportStep" .equals(s.getStepName()))
                                       .findFirst()
                                       .orElseThrow(() ->
                                               new IllegalStateException("Import step execution missing"));
 
         ExecutionContext context = step.getExecutionContext();
 
-        long imported = context.getLong("counts.IMPORTED");
-        long skipped = context.getLong("counts.SKIPPED");
-        long invalidExternalId = context.getLong("counts.INVALID_EXTERNAL_ID");
-        long invalidContact = context.getLong("counts.INVALID_CONTACT");
-        long failed = context.getLong("counts.FAILED");
-        long fetched = context.getLong("counts.FETCHED");
-/*
-        List<CrmContactDto> contacts = retrievalResponse.contacts();
-
-        List<String> externalIds = contacts.stream().map(CrmContactDto::getExternalId).toList();
-        List<CrmContactLink> contactLinks = crmContactLinkRepository.findByConnectionAndExternalIdIn(crmConnection,
-                externalIds);
-        Set<String> linkedExternalIds = contactLinks.stream().map(CrmContactLink::getExternalId).collect(
-                Collectors.toSet());
-
-        int fetched = contacts.size();
-        boolean hasMore = retrievalResponse.hasMore();
-        Long totalAvailable = retrievalResponse.totalAvailable();
-        String continuationToken = retrievalResponse.continuationToken();
-
-        for (CrmContactDto incoming : contacts) {
-            String externalId = incoming.getExternalId();
-
-            if (!StringUtils.hasText(externalId)) {
-                invalidExternalId++;
-            } else if (linkedExternalIds.contains(externalId)) {
-                skipped++;
-            } else {
-                try {
-                    contactImportPersistenceService.saveContactAndLink(crmConnection, incoming);
-                    imported++;
-                    linkedExternalIds.add(externalId);
-                } catch (ContactNotValidException e) {
-                    invalidContact++;
-                } catch (DataIntegrityViolationException e) {
-                    failed++;
-                }
-            }
-        }
-        */
-
         return ContactImportResponse.builder()
                                     .source(crmSource)
-                                    .fetched(fetched)
-                                    .imported(imported)
-                                    .skipped(skipped)
-                                    .invalidExternalId(invalidExternalId)
-                                    .invalidContact(invalidContact)
-                                    .failed(failed)
+                                    .fetched(context.getLong("counts.FETCHED"))
+                                    .imported(context.getLong("counts.IMPORTED"))
+                                    .skipped(context.getLong("counts.SKIPPED"))
+                                    .invalidExternalId(context.getLong("counts.INVALID_EXTERNAL_ID"))
+                                    .invalidContact(context.getLong("counts.INVALID_CONTACT"))
+                                    .failed(context.getLong("counts.FAILED"))
                                     .build();
     }
 

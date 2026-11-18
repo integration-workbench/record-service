@@ -8,6 +8,5 @@ import java.util.Collection;
 import java.util.List;
 
 public interface CrmContactLinkRepository extends JpaRepository<CrmContactLink, Long> {
-    List<CrmContactLink> findByConnectionAndExternalIdIn(
-            CrmConnection connection, Collection<String> externalId);
+    boolean existsByConnectionAndExternalId(CrmConnection connection, String externalId);
 }
