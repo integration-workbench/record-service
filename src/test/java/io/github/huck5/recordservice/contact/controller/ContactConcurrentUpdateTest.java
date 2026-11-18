@@ -46,7 +46,7 @@ class ContactConcurrentUpdateTest {
     private ContactRepository repository;
 
     @Test
-    void updateContact_whenTwoEditsOverlap_onlyOneSucceeds() throws Exception {
+    void updateContactWhenTwoEditsOverlapOnlyOneSucceeds() throws Exception {
         Contact original = repository.saveAndFlush(
                 new Contact("Bob", "Dole", "original@example.com"));
         long id = original.getId();

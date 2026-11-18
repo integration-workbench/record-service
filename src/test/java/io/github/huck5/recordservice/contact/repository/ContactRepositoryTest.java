@@ -26,7 +26,7 @@ class ContactRepositoryTest {
     private ContactRepository repository;
 
     @Test
-    void saveThenFindById_returnsPersistedContact() {
+    void saveThenFindByIdReturnsPersistedContact() {
         Contact saved = repository.save(
                 new Contact("Bob", "Dole", "bob@example.com"));
 
@@ -42,7 +42,7 @@ class ContactRepositoryTest {
     }
 
     @Test
-    void save_whenVersionIsStale_rejectsUpdateAndPreservesNewerValues() {
+    void saveWhenVersionIsStaleRejectsUpdateAndPreservesNewerValues() {
         Long id = repository.save(
                 new Contact("Bob", "Dole", "bob@example.com")).getId();
 

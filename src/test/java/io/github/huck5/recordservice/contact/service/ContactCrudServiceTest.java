@@ -46,7 +46,7 @@ class ContactCrudServiceTest {
     }
 
     @Test
-    void insertContact_mapsRequestAndReturnsSavedContact() {
+    void insertContactMapsRequestAndReturnsSavedContact() {
         ContactCreateRequest request =
                 new ContactCreateRequest("Bob", "Dole", "test@test.com");
         Contact savedContact = mock(Contact.class);
@@ -65,7 +65,7 @@ class ContactCrudServiceTest {
     }
 
     @Test
-    void updateContact_whenContactExists_updatesFieldsAndReturnsSavedContact() {
+    void updateContactWhenContactExistsUpdatesFieldsAndReturnsSavedContact() {
         long id = 42L;
         Contact existing = new Contact("Bob", "Dole", "old@example.com", EXISTING_CONTACT_VERSION);
         ContactCreateRequest request =
@@ -84,7 +84,7 @@ class ContactCrudServiceTest {
     }
 
     @Test
-    void updateContact_whenContactIsMissing_throwsAndDoesNotSave() {
+    void updateContactWhenContactIsMissingThrowsAndDoesNotSave() {
         long id = 42L;
         ContactCreateRequest request =
                 new ContactCreateRequest("Robert", "Smith", "new@example.com");
@@ -97,7 +97,7 @@ class ContactCrudServiceTest {
     }
 
     @Test
-    void updateContact_whenExpectedVersionDoesNotMatch_throwsAndDoesNotSave() {
+    void updateContactWhenExpectedVersionDoesNotMatchThrowsAndDoesNotSave() {
         long id = 42L;
         long incorrectContactVersion = EXISTING_CONTACT_VERSION + 1;
         Contact existing = new Contact("Bob", "Dole", "old@example.com", EXISTING_CONTACT_VERSION);
@@ -116,7 +116,7 @@ class ContactCrudServiceTest {
     }
 
     @Test
-    void getContact_whenRepositoryFindsNothing_throwsContactNotFound() {
+    void getContactWhenRepositoryFindsNothingThrowsContactNotFound() {
         long id = 99L;
         when(repository.findById(id)).thenReturn(Optional.empty());
 
@@ -125,7 +125,7 @@ class ContactCrudServiceTest {
 
     @ParameterizedTest
     @MethodSource("requestsWithInvalidFields")
-    void insertContact_whenAnnotatedConstraintFails_throwsWithoutSaving(
+    void insertContactWhenAnnotatedConstraintFailsThrowsWithoutSaving(
             ContactCreateRequest request) {
 
         assertThrows(
@@ -137,7 +137,7 @@ class ContactCrudServiceTest {
 
     @ParameterizedTest
     @MethodSource("requestsWithInvalidFields")
-    void updateContact_whenAnnotatedConstraintFails_throwsWithoutAccessingRepository(
+    void updateContactWhenAnnotatedConstraintFailsThrowsWithoutAccessingRepository(
             ContactCreateRequest request) {
 
         assertThrows(
@@ -148,7 +148,7 @@ class ContactCrudServiceTest {
     }
 
     @Test
-    void insertContact_whenNamesAreAtMaximumLength_savesContact() {
+    void insertContactWhenNamesAreAtMaximumLengthSavesContact() {
         String firstName = "a".repeat(50);
         String lastName = "b".repeat(80);
 
