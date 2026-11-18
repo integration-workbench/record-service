@@ -32,28 +32,24 @@ public class ContactImportClient {
     public ContactRetrievalResponse fetchPage(CrmSource crmSource, String continuationToken) {
         String url = CRM_SERVICE_URI.formatted(crmSource.name().toLowerCase(Locale.ROOT));
 
-        if(StringUtils.hasText(continuationToken)) {
+        if (StringUtils.hasText(continuationToken)) {
             url += "?continuationToken=" + URLEncoder.encode(continuationToken, StandardCharsets.UTF_8);
         }
 
-        HttpRequest request = HttpRequest.newBuilder()
-                                         .uri(URI.create(url))
-                                         .GET()
-                                         .build();
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
         HttpResponse<String> response;
 
         try {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw new ImportRequestFailedException(
-                        "Import contacts failed. Status code %s" .formatted(response.statusCode()));
+                throw new ImportRequestFailedException("Import contacts failed. Status code %s" .formatted(response.statusCode()));
             }
         } catch (IOException e) {
-            throw new RuntimeException("Import contacts request failed", e);
+            throw new ImportRequestFailedException("Could not retrieve contacts from " + crmSource, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("Import contacts request interrupted.", e);
+            throw new ImportRequestFailedException("Contact retrieval interrupted for " + crmSource, e);
         }
 
         // Successfully retrieved contacts for specified CRM

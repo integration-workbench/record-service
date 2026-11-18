@@ -7,6 +7,7 @@ import io.github.huck5.recordservice.contact.entity.CrmConnection;
 import io.github.huck5.recordservice.contact.entity.CrmContactLink;
 import io.github.huck5.recordservice.contact.exception.ContactNotValidException;
 import io.github.huck5.recordservice.contact.exception.CrmConnectionNotFundException;
+import io.github.huck5.recordservice.contact.exception.ImportJobFailedException;
 import io.github.huck5.recordservice.contact.repository.CrmConnectionRepository;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.job.Job;
@@ -61,8 +62,15 @@ public class ContactImportJobService {
         JobExecution execution = jobOperator.start(contactImportJob, parameters);
 
         if (execution.getStatus() != BatchStatus.COMPLETED) {
-            throw new IllegalStateException(
-                    "Import did not complete: " + execution.getStatus());
+            List<Throwable> failures = execution.getAllFailureExceptions();
+
+            Throwable cause = failures.isEmpty() ? null : failures.getFirst();
+
+            ImportJobFailedException exception = new ImportJobFailedException("Import did not complete: " + execution.getStatus(),
+                    cause);
+            failures.stream().skip(1).forEach(exception::addSuppressed);
+
+            throw exception;
         }
 
         StepExecution step = execution.getStepExecutions().stream()

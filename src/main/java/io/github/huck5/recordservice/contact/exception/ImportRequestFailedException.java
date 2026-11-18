@@ -4,4 +4,8 @@ public class ImportRequestFailedException extends RuntimeException {
     public ImportRequestFailedException(String message) {
         super(message);
     }
+
+    public ImportRequestFailedException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }
