@@ -6,6 +6,7 @@ import io.github.huck5.recordservice.contact.exception.ImportRequestFailedExcept
 import io.github.huck5.recordservice.contact.repository.ContactRepository;
 import io.github.huck5.recordservice.contact.repository.CrmConnectionRepository;
 import io.github.huck5.recordservice.contact.repository.CrmContactLinkRepository;
+import io.github.huck5.recordservice.support.ContactImportFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -27,7 +28,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
-import static io.github.huck5.recordservice.support.ContactImportFixtures.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -51,15 +51,18 @@ class ContactImportJobIntegrationTest {
     void clearImports() {
         links.deleteAllInBatch();
         contacts.deleteAllInBatch();
-        parameters = parameters(connections.findByCrmSource(CrmSource.SALESFORCE).orElseThrow().getId());
+        long connectionId = connections.findByCrmSource(CrmSource.SALESFORCE)
+                .orElseThrow()
+                .getId();
+        parameters = ContactImportFixtures.parameters(connectionId);
     }
 
     @Test
     void actualJobImportsAllPagesAndPersistsMetadataWithoutDuplicatingRecords() throws Exception {
-        when(client.fetchPage(CrmSource.SALESFORCE, null)).thenReturn(page("page-2", "one"));
+        when(client.fetchPage(CrmSource.SALESFORCE, null)).thenReturn(ContactImportFixtures.page("page-2", "one"));
         when(client.fetchPage(CrmSource.SALESFORCE, "page-2"))
-                .thenReturn(page("page-3", "one", "two"));
-        when(client.fetchPage(CrmSource.SALESFORCE, "page-3")).thenReturn(page(null));
+                .thenReturn(ContactImportFixtures.page("page-3", "one", "two"));
+        when(client.fetchPage(CrmSource.SALESFORCE, "page-3")).thenReturn(ContactImportFixtures.page(null));
 
         JobExecution execution = operator.start(job, parameters);
 
@@ -83,7 +86,7 @@ class ContactImportJobIntegrationTest {
             throws Exception {
         var failure = new ImportRequestFailedException("CRM unavailable");
         if (failOnSecondPage) {
-            when(client.fetchPage(CrmSource.SALESFORCE, null)).thenReturn(page("page-2", "one"));
+            when(client.fetchPage(CrmSource.SALESFORCE, null)).thenReturn(ContactImportFixtures.page("page-2", "one"));
             when(client.fetchPage(CrmSource.SALESFORCE, "page-2")).thenThrow(failure);
         } else {
             when(client.fetchPage(CrmSource.SALESFORCE, null)).thenThrow(failure);
@@ -99,7 +102,7 @@ class ContactImportJobIntegrationTest {
 
     @Test
     void restartAfterPageTwoFailurePreservesImportedTotalsAndLocalEdits() throws Exception {
-        when(client.fetchPage(CrmSource.SALESFORCE, null)).thenReturn(page("page-2", "one"));
+        when(client.fetchPage(CrmSource.SALESFORCE, null)).thenReturn(ContactImportFixtures.page("page-2", "one"));
         when(client.fetchPage(CrmSource.SALESFORCE, "page-2"))
                 .thenThrow(new ImportRequestFailedException("Page two unavailable"));
         JobExecution failed = operator.start(job, parameters);
@@ -108,7 +111,7 @@ class ContactImportJobIntegrationTest {
         first.setEmail("local-edit@example.com");
         contacts.saveAndFlush(first);
 
-        doReturn(page(null, "two")).when(client).fetchPage(CrmSource.SALESFORCE, "page-2");
+        doReturn(ContactImportFixtures.page(null, "two")).when(client).fetchPage(CrmSource.SALESFORCE, "page-2");
         JobExecution restarted = operator.start(job, parameters);
 
         assertSavedStatus(restarted, BatchStatus.COMPLETED);
