@@ -7,12 +7,15 @@ import io.github.huck5.recordservice.contact.entity.Contact;
 import io.github.huck5.recordservice.contact.exception.ContactNotFoundException;
 import io.github.huck5.recordservice.contact.exception.ContactNotValidException;
 import io.github.huck5.recordservice.contact.exception.ContactVersionConflictException;
+import io.github.huck5.recordservice.contact.exception.ImportJobFailedException;
+import io.github.huck5.recordservice.contact.exception.ImportRequestFailedException;
 import io.github.huck5.recordservice.contact.service.ContactImportJobService;
 import io.github.huck5.recordservice.contact.service.ContactCrudService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.Arguments;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -25,7 +28,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import java.io.IOException;
+import java.net.http.HttpTimeoutException;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -262,7 +268,10 @@ class ContactControllerTest {
            .andExpect(jsonPath("$.skipped").value(4))
            .andExpect(jsonPath("$.invalidExternalId").value(3))
            .andExpect(jsonPath("$.invalidContact").value(2))
-           .andExpect(jsonPath("$.failed").value(1));
+           .andExpect(jsonPath("$.failed").value(1))
+           .andExpect(jsonPath("$.hasMore").doesNotExist())
+           .andExpect(jsonPath("$.continuationToken").doesNotExist())
+           .andExpect(jsonPath("$.totalAvailable").doesNotExist());
 
         verify(contactImportJobService).importContacts(source);
         verifyNoInteractions(contactCrudService);
@@ -286,47 +295,38 @@ class ContactControllerTest {
     }
 
     @ParameterizedTest
-    @EnumSource(CrmSource.class)
-    void importContacts_returnsCoverageMetadata(CrmSource source)
-            throws Exception {
+    @MethodSource("importFailures")
+    void importContacts_whenJobFails_returnsProblemDetail(
+            Throwable cause, int expectedStatus, String expectedDetail) throws Exception {
+        var failure = new ImportJobFailedException("Internal diagnostic message", cause);
+        // Additional failures are diagnostics; they must not override the primary failure.
+        failure.addSuppressed(new HttpTimeoutException("Suppressed timeout"));
+        when(contactImportJobService.importContacts(CrmSource.SALESFORCE)).thenThrow(failure);
 
-        Long totalAvailable =
-                source == CrmSource.SALESFORCE ? 251L : null;
+        mvc.perform(post("/contacts/imports").queryParam("source", "SALESFORCE"))
+                .andExpect(status().is(expectedStatus))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(expectedStatus))
+                .andExpect(jsonPath("$.title").value("Contact import failed"))
+                .andExpect(jsonPath("$.detail").value(expectedDetail))
+                .andExpect(jsonPath("$.instance").value("/contacts/imports"))
+                .andExpect(jsonPath("$.fetched").doesNotExist());
+    }
 
-        ContactImportResponse response = ContactImportResponse.builder()
-                .source(source)
-                .fetched(1)
-                .imported(1)
-                .skipped(0)
-                .invalidExternalId(0)
-                .invalidContact(0)
-                .failed(0)
-                .build();
-
-        when(contactImportJobService.importContacts(source)).thenReturn(response);
-
-        mvc.perform(post("/contacts/imports")
-                        .queryParam("source", source.name()))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(
-                        MediaType.APPLICATION_JSON))
-                .andExpect(content().json("""
-                    {
-                      "source": "%s",
-                      "fetched": 1,
-                      "imported": 1,
-                      "skipped": 0,
-                      "invalidExternalId": 0,
-                      "invalidContact": 0,
-                      "failed": 0,
-                      "totalAvailable": %s,
-                      "hasMore": true,
-                      "continuationToken": "next-page"
-                    }
-                    """.formatted(source.name(), totalAvailable)));
-
-        verify(contactImportJobService).importContacts(source);
-        verifyNoInteractions(contactCrudService);
+    private static Stream<Arguments> importFailures() {
+        return Stream.of(
+                Arguments.of(new ExecutionException(new ImportRequestFailedException("Upstream failed",
+                                new HttpTimeoutException("Timeout"))), 504,
+                        "Contact retrieval timed out; the import did not complete."),
+                Arguments.of(new ExecutionException(new ImportRequestFailedException("Upstream failed",
+                                new IOException("Connection refused"))), 502,
+                        "Contact retrieval failed; the import did not complete."),
+                Arguments.of(new ImportRequestFailedException("Interrupted",
+                                new InterruptedException("Cancelled")), 500,
+                        "The contact import was interrupted."),
+                Arguments.of(new IllegalStateException("Internal failure"), 500,
+                        "The contact import did not complete."),
+                Arguments.of(null, 500, "The contact import did not complete."));
     }
 
     private static Stream<String> invalidContactBodies() {
